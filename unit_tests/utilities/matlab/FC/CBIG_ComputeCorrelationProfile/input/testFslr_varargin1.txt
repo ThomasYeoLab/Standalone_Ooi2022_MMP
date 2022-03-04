@@ -1,0 +1,1 @@
+./input/rfMRI_REST1_LR_Atlas_MSMAll_hp2000_clean_regress.dtseries.nii

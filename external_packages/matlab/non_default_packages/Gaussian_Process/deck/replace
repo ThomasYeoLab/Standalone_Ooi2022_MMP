@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# load jh library
+[ -z "$JH_ROOT" ] && JH_ROOT=~jhadida/.jh
+[ -d "$JH_ROOT" ] || { echo "jh root not found: $JH_ROOT"; exit 1; }
+source "$JH_ROOT/inc/scriptutils.sh" || { echo "jh lib not sourced"; exit 1; }
+
+# parse inputs
+[ $# -lt 2 ] && echoerrx1 "Usage: $0 <Pattern> <Replace> <Args...>"
+
+Pattern=$1
+Replace=$2
+shift 2
+
+frep "$Pattern" "$Replace" --include={*.m,*.py,*.cpp,*.h,*.hpp} --exclude-dir={_dev,_old,docs,gui,public,armadillo-code} "$@"
+

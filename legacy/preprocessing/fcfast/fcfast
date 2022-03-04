@@ -1,0 +1,1366 @@
+#!/usr/bin/perl 
+# $Id: fcfast,v 2.0 2011/03/29 16:14:28 ythomas Exp $
+# ***************************************************************************
+# * Copyright 2008 Harvard University / HHMI
+# * Cognitive Neuroscience Laboratory / Martinos Center for BiomedicalImaging
+# ***************************************************************************
+# ***************************************************************************
+# * Author  : Tanveer Talukdar <mtt24@nmr.mgh.harvard.edu>
+# * 
+# * Purpose : see CNLwiki page at http://www.nmr.mgh.harvard.edu/nexus/
+# ***************************************************************************
+#
+# Summary:
+# The fcfast script is designed to carry out functional connectivity and 
+# whole brain correlation analyses. It encompasses all of the steps from 
+# downloading fMRI data from the NEXUS archive at MGH using "arcget", data 
+# preprocessing using fsl_preprocess.sh and fcMRI_preproc_nifti.csh, and 
+# generating correlation maps using fcMRI_analysis.csh.
+ 
+use strict;
+use Getopt::Long qw(:config no_ignore_case);
+use Cwd 'abs_path';
+use Time::HiRes qw( gettimeofday tv_interval );
+use File::Path 'rmtree';
+use File::Basename qw(dirname basename);
+
+my %options;
+my @seeds;
+my $seed;
+my $sid;
+my $tr = 5;
+my $nskip = 4;
+my $fwhm;
+my $mpr;
+my $epi = "";
+my @bold;
+my $boldnum;
+my $rdir;
+my $rawddir;
+my $rawanatdir;
+my $dcmdir;
+my $idsleft;
+my $args = @ARGV;
+my $pwd;
+my @roidir;
+my $roi;
+my $roidir;
+my $dirs;
+my $bool;
+my @ziplist;
+my @zfrmlist;
+my $prms;
+my $fslpp;
+my $anat;
+my $errorval;
+my $mskimg = "$ENV{'_HVD_CODE_DIR'}/templates/volume/711-2V_mask_on_N12Trio_avg152T1.nii.gz"; 
+my $threshval = 0.25;
+my $bsub;
+my $cluster;
+my @contxt;
+my $bcoutput;
+my $pid;
+my $T1target = "$ENV{'_HVD_CODE_DIR'}/targets/rN12Trio_avg152T1_brain.4dint";
+my $T2target = "$ENV{'_HVD_CODE_DIR'}/templates/volume/EPI.mnc";
+my $spmdir = "\#";
+my $LocalRawDir;
+my $LocalAnatRawDir;
+my $arcgetcfg;
+my @Months;
+my @Now;
+my $Now;
+my $Month;
+my $Year;
+my @Weekdays;
+my $Weekday;
+my $Hour;
+my $AMPM;
+my $Weekday;
+my $Minute;
+my $Seconds;
+my $subdir;
+my $acgurl;
+my $host;
+my $field;
+my $value;
+
+@Weekdays = ('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday');
+@Months = ('January', 'February', 'March', 'April', 'May', 'June', 'July', 
+		'August', 'September', 'October', 'November', 'December');
+
+## --- check number of arguments
+if($args < 1)
+{
+	usage();
+}
+
+## --- start time
+info("Start Time: ". gettime()); 
+
+## --- getopts
+$errorval = eval {GetOptions(\%options, "id=s",
+					"sdir=s",
+					"rawdir=s",
+					"rearchive",
+					"anat_rawdir=s",
+					"skip=i",
+					"noskip",
+					"tr=f",
+					"help",
+					"mpr=i",
+					"epi=i",
+					"roi=s",
+					"roilist=s",
+					"stackcheck",
+					"display",
+					"bold=s",
+					"bc",
+					"mask=s",
+					"fc",
+					"thresh=f",
+					"near",
+					"rminter",
+					"T1target=s",
+					"T2target=s",
+					"spmpath=s",
+					"nocleanup",
+					"alt_unpack",
+					"clean",
+					"lowmem",
+					"matlab_qc_plot",
+					"smooth=f",
+					"host=s",
+					"user|u=s",
+					"pass|p=s",
+					"verbose|v+",
+					"quiet|q")};
+
+## --- if getopts fails
+if(!$errorval)
+{
+	exit 1;
+}
+
+## --- check for arcget.conf file
+if(!$options{rawdir})
+{
+	info("Home directory = $ENV{HOME}");
+	my $homedir = "$ENV{HOME}";
+
+	$arcgetcfg = "$homedir/.xnat.d/arcget.conf";
+	if(-f $arcgetcfg )
+	{
+		info("Found arcget.conf '$arcgetcfg'");
+	}
+	else
+	{
+		fatal("Unable to locate arcget.conf");
+	}
+}
+
+## --- required arguments
+if(!$options{bold} || !$options{mpr} || !$options{tr})
+{
+	fatal("Must specify -bold, -mpr and -tr arguments");
+}
+
+## --- if user wants help (why is this checked here and not above?)
+if($options{help})
+{
+	usage();
+}
+
+
+## --- check URL in arcget.conf file
+if (!$options{rawdir})
+{
+	if($options{host})
+	{
+		$acgurl = $options{host};
+	}
+	else
+	{
+		open(CONF, "< $arcgetcfg") or fatal("Unable to open $arcgetcfg: $!");
+   		$host = 0;
+   
+		while(<CONF>)
+		{
+			s/\b(p)earl\b/${1}erl/i; # o.O
+        		($field,$value) = split /=/;
+
+			if(($value =~ m/http:/) && ($field =~ m/host/))
+			{
+				$host = 1;
+				$acgurl = $value;
+				chomp($acgurl);
+			}
+		}
+
+		($host) or fatal("Unable to retrieve URL from arcget.conf. Try using the -host option.");
+		close(CONF) or fatal("Unable to close $arcgetcfg: $!");
+	}
+	
+	info("ArcGet URL = $acgurl");
+}
+
+## --- check if logged into a cluster (check for bsub command)
+$bsub = `which bsub 2>/dev/null`;
+$_ = `echo $?`;
+if($_ == 0)
+{
+	$cluster = 1;
+	info("Found `bsub` command '$bsub'. Enabling cluster mode.");
+}
+if($_ == 1)
+{
+	$cluster = 0;
+}
+
+## --- Check if sdir exists and is writable
+my $sdir = './';
+if($options{sdir})
+{
+	my $BOOL = 0;
+	opendir DH, $options{sdir} or fatal("Directory does not exist '$options{sdir}'");
+	$sdir = $options{sdir};
+	$_ = readdir(DH);
+	$BOOL = 1 if -w $_;
+
+	if($BOOL == 0)
+	{
+		fatal("Cannot write to directory '$options{sdir}'");
+	}
+
+	closedir DH;
+	chdir($sdir);
+}
+
+## --- set more convenient variables
+if($options{rawdir}){$LocalRawDir = $options{rawdir};}
+if($options{anat_rawdir}){$LocalAnatRawDir = $options{anat_rawdir};}
+if($options{spmpath}){$spmdir = $options{spmpath};}
+if($options{id}){$sid = $options{id};}
+if($options{mpr}){$mpr = $options{mpr};} 
+if($options{epi}){$epi = $options{epi};}
+if($options{tr}){$tr = $options{tr};}
+if($options{skip}){$nskip = $options{skip};}
+if($options{noskip}){$nskip = 0;}
+
+## --- reset T2 target for normalization
+if($options{T2target})
+{
+	if($options{T2target} eq "MNIBLDS")
+	{
+		$T2target ="$ENV{'_HVD_CODE_DIR'}/templates/volume/EPI.mnc";
+		info("T2 target image for normalization '${T2target}'");
+	}
+
+	if($options{T2target} eq "MNIBLDOY")
+	{
+		$T2target ="$ENV{'_HVD_CODE_DIR'}/targets/rMNI152_BOLD_Fyo_2mm.4dint.img";
+		info("T2 target image for normalization '${T2target}'");
+	}
+
+	if($options{T2target} eq "MNIBLDY")
+	{
+		$T2target ="$ENV{'_HVD_CODE_DIR'}/targets/rMNI152_BOLD_Fy_2mm.4dint.img";
+		info("T2 target image for normalization '${T2target}'");
+	}
+
+	if($options{T2target} eq "MNIBLDO")
+	{
+		$T2target ="$ENV{'_HVD_CODE_DIR'}/targets/rMNI152_BOLD_Fo_2mm.4dint.img";
+		info("T2 target image for normalization '${T2target}'");
+	}
+}
+
+## --- set T1 target for normalization
+if($options{T1target})
+{
+	if($options{T1target} eq "MNIT1S")
+	{
+		$T1target ="$ENV{'_HVD_CODE_DIR'}/targets/rN12Trio_avg152T1_brain.4dint";
+		info("T1 target image for normalization '${T1target}.img'");
+	}
+
+	if($options{T1target} eq "MNIT1SPM")
+	{
+		$T1target ="$ENV{'_HVD_CODE_DIR'}/targets/MNI152_T1_2mm_spm.4dint";
+		info("T1 target image for normalization '${T1target}.img'");
+	}
+
+	if($options{T1target} eq "MNIT1FSL")
+	{
+		$T1target ="$ENV{'_HVD_CODE_DIR'}/targets/MNI152_T1_2mm_brain_fsl.4dint";
+		info("T1 target image for normalization '${T1target}.img'");
+	}
+
+	if($options{T1target} eq "MNIT1Y")
+	{
+		$T1target ="$ENV{'_HVD_CODE_DIR'}/targets/rMNI152_T1W_Fy_2mm.4dint";
+		info("T1 target image for normalization '${T1target}.img'");
+	}
+
+	if($options{T1target} eq "MNIT1O")
+	{
+		$T1target ="$ENV{'_HVD_CODE_DIR'}/targets/rMNI152_T1W_Fo_2mm.4dint";
+		info("T1 target image for normalization '${T1target}.img'");
+	}
+
+	if($options{T1target} eq "MNIT1OY")
+	{
+		$T1target ="$ENV{'_HVD_CODE_DIR'}/targets/rMNI152_T1W_Fyo_2mm.4dint";
+		info("T1 target image for normalization '${T1target}.img'");
+	}
+
+	if($options{T1target} eq "CN12T1OY")
+	{
+		$T1target ="$ENV{'_HVD_CODE_DIR'}/targets/rCN12Trio_avg152T1_brain.4dint";
+		info("T1 target image for normalization '${T1target}.img'");
+	}
+}
+
+## --- parse BOLD string
+if($options{bold})
+{
+	$_ = $options{bold};  
+	s/,/ /g; 
+	@bold = split / /, $_;
+
+	for(my $i = 0; $i <= $#bold; $i++)
+	{
+		$bold[$i] = ($bold[$i]);
+
+		if($bold[$i] =~ /^\d+$/)
+		{
+			my $val = 1;
+		}
+		else
+		{
+			fatal("Invalid value for -bold option '$bold[$i]', number expected");
+
+		}
+	}
+}
+
+## --- process ROI and ROI list
+if($options{roi} || $options{roilist})
+{
+	if($options{roi})
+	{
+		$_ = $options{roi};
+		s/,/ /g;
+		$roi = $_;
+		@roidir = split / /, $roi;
+	}
+
+	if($options{roilist})
+	{
+		open(FILE,$options{roilist}) || fatal("Cannot open file '$options{roilist}'");
+
+		while(<FILE>)
+		{
+  			## --- expand any environment variables within filename
+			chomp(my $line = `echo -n "$_"`);
+			push @roidir, $line;
+		}
+
+		close(FILE);
+	}
+
+	for(my $i = 0; $i <= $#roidir; $i++)
+	{
+		if(-e $roidir[$i])
+		{
+			info("Found ROI directory '$roidir[$i]'");
+		}
+		else
+		{
+			fatal("Unable to find '$roidir[$i]'");
+		}
+
+		if(! -r $roidir[$i])
+		{
+			fatal("Unable to read $roidir[$i]");
+		}
+
+		$roidir = abs_path($roidir[$0]);
+		$roidir = `dirname $roidir`;
+		chomp($roidir);
+
+		$dirs = abs_path($roidir[$i]);
+		$dirs = `dirname $dirs`;
+		chomp($dirs);
+
+		$seeds[$i] = `basename $roidir[$i]`;
+		chomp($seeds[$i]);
+
+		if($roidir ne $dirs)
+		{ 
+			fatal("Seed regions must be located in the same directory");
+		}
+	}
+
+	$seed = join(" ", @seeds);
+}
+
+## --- link local raw directory or ArcGet data
+if($options{rawdir})
+{
+	info("Creating a link between local RAW data and analysis directory");
+
+	mkdir("$sid", 0777);
+	chdir($sid);
+	`rm -r -f RAW`;
+	`ln -s $LocalRawDir RAW`;
+	$subdir = `pwd`;
+	chomp($subdir);
+	$rawddir = $subdir."/RAW";
+	chdir("../");
+
+	opendir DH, "$sid/RAW" or fatal("After link attempt, could not open directory 'RAW'");
+	closedir DH;
+}
+else
+{
+	info("Retrieving data from XNAT");
+	info("Downloading data for MR Session '$sid'");
+	
+	my $raw_string = $mpr . "," . join(",", @bold);
+	info("ArcGet raw (-r) string = '$raw_string'");
+
+	arcGetSession(	output_dir => $sdir,
+			session_id => $sid,
+			xnat_host => $acgurl,
+			xnat_pass => $options{pass},
+			xnat_user => $options{user},
+			raw => $raw_string);
+
+	## --- unzip resultant zipfile
+	my $uzp = "unzip -q $sid.zip";
+	info("Unzipping resultant ZIP file");
+	info("Unzip command => $uzp");
+	system($uzp);
+	check_status();
+	`rm ${sid}.zip`;
+
+	## --- decompress any .gz files
+	info("Decompressing any .gz files");
+	## --- find the single directory where all RAW imaging data are stored (bad assumption)
+	$dcmdir = `dcmfind.pl -id $sid`;
+	chomp($dcmdir);
+	chdir($sid) or fatal("$!");
+	$subdir = `pwd`;
+	chomp($subdir);
+	chdir($dcmdir);
+	$rawddir = `pwd`;
+	@ziplist = glob("*.gz");
+	
+	for(my $i = 0; $i <= $#ziplist; $i++)
+	{
+		system("gunzip -f $ziplist[$i]");
+		if($? != 0)
+		{
+			fatal("Decompression faile at file '$ziplist[$i]'");
+		}
+	}
+
+	chdir($subdir);
+	chdir("../");
+
+	## --- remove README.txt
+	if(-e "README.txt")
+	{
+		`rm README.txt`;
+	}
+}
+
+## --- link local RAW ANAT directory if necessary
+if($options{anat_rawdir})
+{
+	info("Creating a link between local ANAT RAW data and analysis directory");
+
+	chdir($subdir);
+
+	`rm -r -f RAW_ANAT`;
+	`ln -s $LocalAnatRawDir RAW_ANAT`;
+	$rawanatdir = $subdir."/RAW_ANAT";
+	chdir("../");
+
+	opendir DH, "$sid/RAW_ANAT" or fatal("After link attempt, could not open directory 'RAW_ANAT'");
+	closedir DH;
+}
+
+## --- create scripts directory
+chdir($subdir);
+mkdir('scripts', 0777);
+chdir('scripts');
+$pwd = `pwd`;
+my $scriptdir = $pwd;
+
+## --- unpack DICOM data
+if(!$options{anat_rawdir})
+{
+	info("Generating unpack .cfg file for all data (EPI, BOLD, ANAT)");
+ 
+	## --- generate .cfg file for unpacksdcmdir
+	my $cfgfile = $sid . "_unpack_fsl.cfg";
+
+	open(OUTPUT, '>', $cfgfile) or fatal("Could not open file $cfgfile for writing: %!");
+
+	if($options{mpr})
+	{
+		printf OUTPUT " $mpr anat nii " . $sid . "_mpr%03d.nii\n", $mpr;
+	}
+
+	if($options{epi})
+	{
+		printf OUTPUT " $epi anat nii " . $sid . "_t1epi%03d.nii\n", $epi;
+	}
+
+	if($options{bold})
+	{
+		for(my $i = 0; $i <= $#bold; $i++)
+		{
+			printf OUTPUT " $bold[$i] bold nii " . $sid . "_bld%03d_rest.nii\n", $bold[$i];
+		}
+	}
+
+	close OUTPUT;
+	
+	chomp($sid);
+	chomp($scriptdir);
+	chomp($rawddir);
+	info("RAW directory '$rawddir'");
+	info("Scripts directory '$scriptdir'");
+
+	chdir("$scriptdir");
+
+	## --- call unpack_dicom.py (alt_unpack) or unpack_fsl.sh
+	if($options{alt_unpack})
+	{
+		info("Checking for unpack_dicom.py on your PATH");
+		system("which unpack_dicom.py");
+		check_status();
+
+		my $config_file = $scriptdir . "/" . $cfgfile;
+		my $cmd = "unpack_dicom.py -i $rawddir -c $config_file -o $subdir";
+		info("Unpack DICOM command => $cmd");
+		system($cmd);
+		check_status();
+	}
+	else
+	{
+		## --- call unpack_fsl.sh
+		info("Checking for unpack_fsl.sh on your PATH");
+		my $whichunpack = "which unpack_fsl.sh";
+		system($whichunpack);
+		check_status();
+
+		my $unpck = "unpack_fsl.sh -rawdir $rawddir -cfgdir $scriptdir -subid $sid";
+		info("Unpack command => $unpck");
+		system($unpck);
+		check_status();
+	}
+}
+else
+{
+	## --- STEP 1: unpack bold
+    	## --- generate .cfg file for unpacksdcmdir
+	info("Generating unpack .cfg file for EPI and/or BOLD");
+	
+	my $cfgfile = $sid."_unpack_fsl.cfg";
+
+	open(OUTPUT, '>', $cfgfile) or fatal("Could not open file $cfgfile for writing: %!");
+
+	if($options{epi})
+	{
+		printf OUTPUT " $epi anat nii " . $sid . "_t1epi%03d.nii\n", $epi;
+	}
+
+	if($options{bold})
+	{
+		for(my $i = 0; $i <= $#bold; $i++)
+		{
+			printf OUTPUT " $bold[$i] bold nii " . $sid . "_bld%03d_rest.nii\n", $bold[$i];
+		}
+	}
+    
+	close OUTPUT;
+
+	chomp($sid);
+	chomp($scriptdir);
+	chomp($rawddir);
+	info("RAW directory '$rawddir'");
+	info("Scripts directory '$scriptdir'");
+	chdir("$scriptdir");
+	
+	## --- call unpack_fsl.sh
+    	info("Checking for unpack_fsl.sh on your PATH");
+	my $whichunpack = "which unpack_fsl.sh";
+    	system($whichunpack);
+	check_status();
+	
+	my $unpck = "unpack_fsl.sh -rawdir $rawddir -cfgdir $scriptdir -subid $sid";
+	info("Unpack command => $unpck");
+	system($unpck);
+	check_status();
+
+	## --- STEP 2: unpack anat
+	## --- generate .cfg file for unpacksdcmdir
+	info("Generating unpack .cfg file for ANAT");
+	my $cfgfile = $sid . "_unpack_fsl.cfg";
+	open(OUTPUT, '>', $cfgfile) or fatal("Could not open file $cfgfile for writing: %!");
+
+	if($options{mpr})
+	{
+		printf OUTPUT " $mpr anat nii " . $sid . "_mpr%03d.nii\n", $mpr;
+	}
+
+	close OUTPUT;
+
+	chomp($sid);
+	chomp($scriptdir);
+	chomp($rawanatdir);
+
+	info("RAW ANAT directory '$rawanatdir'");
+	info("Scripts directory '$scriptdir'");
+
+	chdir("$scriptdir");
+
+	## --- call unpack_fsl.sh
+	info("Checking for unpack_fsl.sh on your PATH");
+	my $whichunpack = "which unpack_fsl.sh";
+	system($whichunpack);
+	check_status();
+
+	my $unpck = "unpack_fsl.sh -rawdir $rawanatdir -cfgdir $scriptdir -subid $sid";
+	info("Unpack command => $unpck");
+	system($unpck);
+	check_status();
+}
+
+## --- if requested, re-archive RAW directories
+if($options{rearchive})
+{
+	if(-d $rawddir && $rawddir ne "")
+	{
+		my $raw_data_dir = realpath($rawddir);
+		my $rdd_dirname = dirname($raw_data_dir);		
+
+		experimental("Re-archiving and removing local RAW directory to save space");
+
+		## --- archive local RAW directory
+		my @args = ("tar", "-c", "-f", "$raw_data_dir.tar", "-C", "$rdd_dirname",  basename("$raw_data_dir"));
+		system(@args) == 0 or fatal("Re-archiving local RAW directory failed");
+		
+		## --- remove local RAW directory
+		my $num_files = rmtree($raw_data_dir, 0, 1) or fatal("Failed to re-archive RAW directory");
+
+		info("Deleted $num_files files");
+	}
+
+	if(defined $rawanatdir && $rawanatdir ne "")
+	{
+		my $raw_anat_dir = realpath($rawanatdir);
+		my $rad_dirname = dirname($raw_anat_dir);
+		
+		info("Re-archiving and removing local ANAT/RAW directory to save space");
+
+		## --- archive local ANAT/RAW directory
+		my @args = ("tar", "-c", "-f", "$raw_anat_dir.tar", "-C", "$rad_dirname",  basename("$raw_anat_dir"));
+		system(@args) == 0 or fatal("Re-archiving local ANAT/RAW directory failed");
+
+		## --- remove local RAW directory
+		my $num_files = rmtree($raw_anat_dir, 0, 1) or fatal("Failed to re-archive ANAT/RAW directory");
+
+		info("Deleted $num_files files");
+	}
+}
+
+## --- generate .params file for fcMRI
+my $boldstr = join(" ", @bold);
+
+if($options{epi} && $options{spmpath})
+{
+	$prms = "fcparams.pl -id $sid -bold $boldstr -TR $tr -skip $nskip " . 
+		"-mpr $mpr -epi $epi -sdir $scriptdir -T1target $T1target " . 
+		"-T2target $T2target -SPMparams $spmdir";
+}
+
+if($options{spmpath})
+{
+	$prms = "fcparams.pl -id $sid -bold $boldstr -TR $tr -skip $nskip " . 
+		"-mpr $mpr -sdir $scriptdir -T1target $T1target -T2target " . 
+		"$T2target -SPMparams $spmdir";
+}
+
+if($options{epi})
+{
+	$prms = "fcparams.pl -id $sid -bold $boldstr -TR $tr -skip $nskip " . 
+		"-mpr $mpr -epi $epi -sdir $scriptdir -T1target $T1target " . 
+		"-T2target $T2target";
+}
+else
+{
+	$prms = "fcparams.pl -id $sid -bold $boldstr -TR $tr -skip $nskip " . 
+		"-mpr $mpr -sdir $scriptdir -T1target $T1target -T2target $T2target";
+}
+
+## --- execute fcparams.pl
+info("Checking for fcparams.pl on your PATH");
+my $whichfcparams = "which fcparams.pl";
+system($whichfcparams);
+check_status();
+
+info("fcMRI parameters command => $prms");
+system($prms);
+check_status();
+
+## --- source params file (this is unecessary and produces an error if your SHELL is not csh/tcsh)
+info("Sourcing parameters file");
+system `source $sid.params`; 
+#check_status();
+
+chdir($subdir);
+
+## --- check if unpacked file exists
+for(my $i = 0; $i <= $#bold; $i++)
+{
+	$boldnum = sprintf("%03d", $bold[$i]);
+	my $code = (-e "bold/$boldnum/${sid}_bld${boldnum}_rest_reorient.nii.gz");
+	eval($code) or fatal("Problem with code '$code', stopped");
+}
+
+chdir("../");
+
+## --- call fsl_preprocess.sh
+if(!$options{nocleanup})
+{
+	$fslpp = "fsl_preprocess.sh -s $sid";
+}
+
+if($options{nocleanup})
+{
+	$fslpp = "fsl_preprocess.sh -s $sid --nocleanup";
+}
+
+if($options{matlab_qc_plot})
+{
+	$fslpp = "fsl_preprocess.sh -s $sid --nocleanup --matlab_qc_plot";
+}
+
+info("Checking for fsl_preprocess.sh on your PATH");
+my $whichfsl_preprocess = "which fsl_preprocess.sh";
+system($whichfsl_preprocess);
+check_status();
+
+info("FSL preprocessing command => $fslpp");
+system($fslpp);
+check_status();
+
+## --- check quality control of preprocessed BOLD scans
+if($options{stackcheck})
+{
+	if(!$options{lowmem})
+	{
+		info("Checking for stackcheck.csh on your PATH");
+    		my $whichstack = "which stackcheck.csh";
+		system($whichstack);
+		check_status();
+
+		my $runstack = "stackcheck.csh $sid";
+		info("Stack check command => $runstack");
+		system($runstack);
+	}
+}
+
+## --- smooth preprocessed data 
+if($options{smooth})
+{ 
+	$fwhm = $options{smooth};
+	my $fhalf = (0.4412712/($fwhm/10));
+	my $sigma = ($fwhm/2.35482);
+
+	chdir($sid);
+
+	for(my $i = 0; $i <= $#bold; $i++)
+	{
+		$boldnum = sprintf("%03d", $bold[$i]);
+		info("Smoothing '${sid}_bld${boldnum}_rest_reorient_skip_faln_mc_atl.nii.gz' (please wait)");
+
+		if($options{lowmem})
+		{	
+			info("Checking for fslmaths on your PATH");
+        		my $whichfslmaths = "which fslmaths";
+        		system($whichfslmaths);
+			check_status();
+	
+			my $smoothed_output = "${sid}_bld${boldnum}_rest_reorient_skip_faln_mc_atl.nii.gz";
+			my $smooth_amt = int($fhalf*10 + 0.5);
+			$smoothed_output =~ s/.nii.gz/_g$smooth_amt.nii.gz/;
+			
+			my $smooth_cmd = "fslmaths bold/$boldnum/${sid}_bld${boldnum}_rest_reorient_skip_faln_mc_atl.nii.gz " . 
+					"-s $sigma bold/$boldnum/$smoothed_output";
+
+			info("Smoothing command => $smooth_cmd");
+			system($smooth_cmd);
+			check_status();
+		}
+		else
+		{
+			info("Checking for gauss_nifti on your PATH");
+			my $whichgauss_nifti = "which gauss_nifti";
+			system($whichgauss_nifti);
+			check_status();
+			
+			my $gauss_cmd = "gauss_nifti bold/$boldnum/${sid}_bld${boldnum}_rest_reorient_skip_faln_mc_atl.nii.gz $fhalf";
+			info("Gaussian smoothing command => $gauss_cmd");
+			system($gauss_cmd);
+			check_status();
+		}
+	}
+
+	chdir("../");
+}
+
+## --- clean any unnecessary files
+if($options{clean})
+{
+	chdir($sid);
+
+	for(my $i = 0; $i <= $#bold; $i++)
+	{
+		$boldnum = sprintf("%03d", $bold[$i]);
+		`rm bold/$boldnum/${sid}_bld${boldnum}_rest.nii`;
+		`rm bold/$boldnum/${sid}_bld${boldnum}_rest_reorient.nii.gz`;
+	}
+
+	`rm -r RAW`;
+	chdir("../");
+}
+
+#################################################################################
+## note that all of the code above this line appears to be copied from `procfast`
+#################################################################################
+
+## --- call fcMRI_preproc_nifti.csh
+info("Checking for gotofcMRI.pl on your PATH");
+my $which_gotofcMRI = "which gotofcMRI.pl";
+system($which_gotofcMRI);
+check_status();
+
+my $gotofcmri_cmd = "gotofcMRI.pl -sdir $scriptdir -id $sid";
+info("Go to fcMRI command => $gotofcmri_cmd");
+system($gotofcmri_cmd);
+check_status();
+
+## --- call fcMRI_preproc_nifti.csh
+info("Checking for fcMRI_preproc_nifti.csh on your PATH");
+my $which_fcMRI_preproc_nifti = "which fcMRI_preproc_nifti.csh";
+system($which_fcMRI_preproc_nifti);
+check_status();
+
+my $fcMRIpp = "fcMRI_preproc_nifti.csh $sid";
+info("fcMRI preprocessing command => $fcMRIpp");
+## --- i'm not quite sure what's going on here, the system() call was already commented out
+#system $fcMRIpp;
+$pid = open(PH, "$fcMRIpp 2>&1 |");                 
+while (<PH>)
+{
+	print $_; 
+	if(/nifti_image_read/)
+	{
+		exit -1;
+	}
+}                               
+
+if($options{clean})
+{
+	chdir($sid);
+
+	for(my $i = 0; $i <= $#bold; $i++)
+	{
+		$boldnum = sprintf("%03d", $bold[$i]);
+		`rm bold/$boldnum/${sid}_bld${boldnum}_rest_reorient_skip_faln_mc_atl_g7.nii.gz`;
+		`rm bold/$boldnum/${sid}_bld${boldnum}_rest_reorient_skip_faln_mc_atl_g7_bpss.nii.gz`;
+	}
+
+	chdir("../");
+}
+
+
+## --- run fcanalysis.pl
+info("Checking for fcanalysis.pl on your PATH");
+my $which_fcanalysis = "which fcanalysis.pl";
+system($which_fcanalysis);
+check_status();
+
+## --- execute functional connectivity if user does not want whole-brain-correlation AND ROIs were passed in
+if((!$options{bc}) && ($options{roi} || $options{roilist}))
+{
+	## --- run fcanalysis.pl
+	info("Checking for fcanalysis.pl on your PATH");
+	my $which_fcanalysis = "which fcanalysis.pl";
+	system($which_fcanalysis);
+	check_status();
+
+	my $fcanalysis_cmd = "fcanalysis.pl -id $sid -seed $seed -regdir $roidir";
+	info("Functional connectivity analysis command => $fcanalysis_cmd");
+	system($fcanalysis_cmd);
+	check_status();
+
+	## --- run subject-specific {$sid}_fcMRI_analysis.csh
+	my $fca = "./$sid\_fcMRI_analysis.csh";
+	info("Subject fcMRI analysis command => $fca");
+	system($fca);
+	check_status();
+
+	info("End Time: " . gettime());
+
+	## --- launch visualization (fivn)
+	if($options{display})
+	{
+		chdir("$sid/fcMRI");
+		@zfrmlist = glob("*zfrm.nii.gz");
+		chdir("../../");
+		$mpr = sprintf("%03d", $mpr);
+		$anat = "${sid}_mpr${mpr}_reorient_atl.nii.gz";
+
+		for(my $i = 0; $i <= $#zfrmlist; $i++)
+		{
+			## --- run fivn
+			info("Checking for fivn on your PATH");
+			system("which fivn");
+			check_status();
+
+			my $runfivn = "fivn -m mni222 -s $sid/anat/$anat -a $sid/fcMRI/$zfrmlist[$i] -lstat 0.2 -hstat 2 &";
+			info("FIVN command => $runfivn");
+			system($runfivn);
+			check_status();
+		}
+	}
+}
+
+## --- execute whole-brain-correlation
+if($options{bc})
+{
+	if($options{mask})
+	{
+		$mskimg = $options{mask};
+	} 
+
+	if($options{thresh})
+	{
+		$threshval = $options{thresh};
+	}
+
+
+	my $bcfast = "xcorr.sh -s $sid -thresh $threshval -mask $mskimg";
+
+	## --- maybe string concatenation would be better here
+	if($options{near})
+	{
+		$bcfast = "xcorr.sh -s $sid -thresh $threshval -mask $mskimg -weight";
+	}
+
+	if($cluster == 1)
+	{
+		$bcfast = "xcorr.sh -s $sid -thresh $threshval -mask $mskimg -cluster";
+	}
+
+	if($options{near} && $cluster == 1)
+	{
+		$bcfast = "xcorr.sh -s $sid -thresh $threshval -mask $mskimg -cluster -weight";
+	}
+
+	## --- I'm not sure why we only care about a exit status of 2
+	## --- but this was explicitely done, so we'll leave it
+	info("Whole-brain correlation command => $bcfast");
+	my $bcsig = system($bcfast);
+	if($bcsig == 2)
+	{
+		my_sigint();
+	}
+
+	## --- Check bclist.txt for outputs from whole brain correlation
+	chdir("$sid/bc");
+	open(FILE, "${sid}_bc.txt") || fatal("cannot open file '${sid}_bc.txt'");
+
+	while(<FILE>)
+	{
+		my $line = $_;
+		chomp ($line);
+
+		if(-e $line)
+		{
+			info("Found $line");
+		}
+	}
+
+	close(FILE);
+
+	if(-e "${sid}_bc.txt")
+	{
+		`rm ${sid}_bc.txt`
+	}
+
+	chdir("../../");
+
+	info("End Time: " . gettime());
+}
+
+chdir("$sid");
+
+if($options{rminter})
+{
+	`rm -r bold`;
+	`rm -r fcMRI`;
+	`rm -r RAW`;
+}
+
+if(-e "bjobids.txt")
+{
+	`rm bjobids.txt`
+}
+
+if(-e "childps.txt")
+{
+	`rm childps.txt`
+}
+
+chdir("../");
+
+sub my_sigint
+{
+	if($cluster == 0)
+	{
+		chdir("$sid");
+		open(FILE, "childps.txt") || fatal("Cannot open file 'childps.txt'");
+
+		while(<FILE>)
+		{
+			my $line = $_;
+			chomp ($line);
+			`kill $line`;
+		}
+
+		close(FILE);
+
+		if(-e "childps.txt")
+		{
+			`rm childps.txt`
+		}
+
+		chdir("../");
+	}
+
+	if($cluster == 1)
+	{
+		chdir("$sid");
+		open(FILE, "bjobids.txt") || fatal("Cannot open file 'bjobids.txt'");
+
+		while(<FILE>)
+		{
+			if(/(\d+)/)
+			{
+				my $line = $_;
+				chomp ($line);
+				info("bsub job ID: $line");
+				`bkill $line`;
+			}
+		}
+
+		close(FILE);
+
+		if(-e "bjobs.log")
+		{
+			`rm bjobs.log`
+		}
+
+		if(-e "bjobids.txt")
+		{
+			`rm bjobids.txt`
+		}
+
+		chdir("../");
+	}
+
+	exit 1;
+}
+
+# Get a time string
+sub gettime
+{
+	@Weekdays = ('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday');
+	@Months = ('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December');
+	@Now = localtime(time());
+	$Month = $Months[$Now[4]];
+	$Weekday = $Weekdays[$Now[6]];
+	$Hour = $Now[2];
+	
+	if($Hour > 12)
+	{
+		$Hour = $Hour - 12;
+		$AMPM = "PM";
+	}
+	else
+	{
+		$Hour = 12 if $Hour == 0;
+		$AMPM ="AM";
+	}
+
+	$Minute = $Now[1];
+	$Minute = "0$Minute" if $Minute < 10;
+	$Seconds = $Now[0];
+	$Seconds = "0$Seconds" if $Seconds < 10;
+	$Year = $Now[5]+1900;
+
+	return "$Weekday, $Month $Now[3], $Year $Hour:$Minute $AMPM";
+}
+
+# Print informational message
+sub info
+{
+        my $message = shift;
+
+        print("[INFO]: $message\n");
+}
+
+# print experimental message
+sub experimental
+{
+        my $message = shift;
+
+        print("[EXPERIMENTAL]: $message\n");
+}
+
+# Print fatal message and halt
+sub fatal
+{
+        my $message = shift;
+        my $status_code = shift;
+
+        print("[FATAL]: $message\n");
+
+        if(!$status_code)
+        {
+                $status_code = 1;
+        }
+
+        exit($status_code);
+}
+
+# Check most recent system call status
+sub check_status
+{
+        if($? != 0)
+        {
+                fatal("Command failed: $?");
+        }
+}
+
+sub usage
+{
+
+use vars qw
+	(
+	$VERSION
+	    );
+
+  #$VERSION = q$\$Id: fcfast,v 1.8 2009/02/26 16:14:28 mtt24 Exp $;
+  #$VERSION = q$\$Id: fcfast,v 1.9 2011/03/29 16:14:28 ythomas Exp $;
+  $VERSION = q$\$Id: fcfast,v 2.0 2011/09/26 16:14:28 ythomas Exp $;
+  print "$VERSION\n";
+
+  ##print "Note: procfast is derived from the parent script fcfast.\n"; 
+  ##print "usage: procfast -id 070519_4TT00247 -tr 5.0 -mpr 3 -bold 5,6\n";
+  ##print "usage: procfast -id 070519_4TT00247 -tr 5.0 -mpr 3 -bold 5,6 -T1target MNIT1OY -T2target MNIBLDOY -clean\n";
+  ##print "usage: procfast -id 070519_4TT00247 -tr 5.0 -mpr 3 -bold 5,6 -smooth 6.0 -T1target MNIT1OY -T2target MNIBLDOY -clean\n";
+  print "usage: fcfast -id 070519_4TT00247 -roi reg6mm_40_-18_48_.nii.gz -tr 5.0 -mpr 3 -bold 5,6\n";
+  print "usage: fcfast -id 070519_4TT00247 -tr 5.0 -mpr 3 -bold 5,6 -roi /usr/roidir reg6mm_40_-18_48_.nii.gz -tr 5.0 -mpr 3-T1target MNIT1OY -T2target MNIBLDOY -clean\n";
+#Uncomment the print "usage procfast..." statements above if changing to procfast and comment out the print "usage fcfast ..." statements
+  print "\n";
+  print "options:\n";
+  print "-rawdir: specify path to raw data directory if data is not located in archive\n";
+  print "-rearchive: re-archive local RAW directories to save space\n";
+  print "-anat_rawdir: specify path to anat raw data directory if raw anat data is not located in archive or not in the same session as bold\n";
+  print "-host: specify URL to XNAT (e.g. http://localhost:8080/xnat) (default: host specified in arcget.conf file).\n";
+  print "-spmpath: specify SPM params file location if different from default params file\n"; 
+  print "-id: specify session ID.\n";
+  print "-sdir: specify location to save results (default is './').\n";
+  print "-tr: specify sampling rate in sec.\n";
+  print "-skip: specify number of frames to skip (default is 4).\n";
+  print "-noskip: no deletion of frames. Note that specifying skip to be zero does not work.\n";
+  print "-mpr: specify t1 weighted mprage number.\n";
+  print "-epi: specify t1 weighted EPI number (optional).\n";
+  print "-bold: specify bold run numbers followed by a comma (e.g. -bold 5,6,13).\n";
+  print "-stackcheck: generate quality control .report file and qc images for unpacked raw bold runs.\n";
+  print "-nocleanup: leave intermediate files produced at preprocessing stage\n";
+  print "-clean: remove RAW directory and intermediate bold runs.\n";
+  print "-lowmem: uses fslmaths for smoothing instead of gauss_nifit, also does not run stackcheck.csh\n";
+  print "-matlab_qc_plot: uses matlab to perform qc plot insteads of gnuplot, etc\n";
+  ##print "-smooth: specify in mm the FWHM of a gaussian kernel to smooth preprocessed data.\n"; 
+  # uncomment print "-smooth:..." if changing to procfast 
+  print "-T2target: specify T2 target image for normalizing BOLD (default is MNIBLDS).\n";
+  print "T2 Target images available for normalization:\n";
+  print "MNIBLDS: T2-weighted epi BOLD-contrast atlas (MNI152 space, standard SPM atlas)\n";
+  print "MNIBLDY: T2-weighted young adult epi BOLD-contrast atlas 3T Trio (MNI152 space, Snyder atlas)\n";     
+  print "MNIBLDO: T2-weighted old adult epi BOLD-contrast atlas 3T Trio (MNI152 space, Snyder atlas)\n";  
+  print "MNIBLDOY: T2-weighted merged old/young epi BOLD-contrast atlas 3T Trio (MNI152 space, Snyder atlas)\n";
+  print "-T1target: specify T1 target image for normalizing MPRAGE (default is MNIT1S).\n";
+  print "T1 Target images available for normalization:\n";	
+  print "MNIT1S: skull stripped T1-weighted merged old/young atlas 3T Trio (MNI152 space, Snyder atlas)\n"; 
+  print "MNIT1SPM: T1-weighted (MNI152 space, standard SPM atlas, not skull-stripped)\n";
+  print "MNIT1FSL: T1-weighted (MNI152 space, standard FSL atlas, skull-stripped)\n"; 
+  print "MNIT1Y: T1-weighted young adult atlas 3T Trio (MNI152 space, Snyder atlas)\n";     
+  print "MNIT1O: T1-weighted old adult atlas 3T Trio (MNI152 space, Snyder atlas)\n";  
+  print "MNIT1OY: T1-weighted merged old/young atlas 3T Trio (MNI152 space, Snyder atlas)\n";
+  print "CN12T1OY: skull-stripped T1-weighted merged old/young brain template\n";
+  print "\n";
+  # comment out print statements below if changing to procfast
+  print "-fc: computes functional connectivity (default is -fc).\n";
+  print "-bc: computes whole brain correlation (overrides -fc).\n";
+  print "-display: displays using fivn the final correlation (Z) images for each region.\n";
+  print "\n";
+  print "options specific to -fc flag:\n";
+  print "-roi: specify seed region/regions (follow multiple seed region names by a comma).\n";
+  print "-roilist: specify seed regions in a text list.\n";
+  print "Examples:\n";
+  print "fcfast -id 070519_4TT00258 -roi /usr/seeds/reg6mm_-40_-18_48_.nii.gz,/usr/seeds/reg6mm_40_-18_48_.nii.gz -tr 2.5 -mpr 3 -bold 5,6 -stackcheck\n";
+  print "fcfast -id 070519_4TT00258 -roilist /usr/seeds.txt -tr 2.5 -mpr 3 -bold 5,6 -stackcheck -display\n";
+  print "\n";
+  print "options specific to -bc flag:\n";
+  print "-mask: specify mask > 0 to select voxels from input image (default mask is MNI152 brain).\n";
+  print "-thresh: set threshold for counting voxel values > threshold (default is 0.25; range = -1 to 1).\n";
+  print "-near: apply inverse distance weighting to correlation that decreases with distance.\n";
+  print "Examples:\n";
+  print "fcfast -bc -id 070519_4TT00258 -mask /usr/wbrainmask.nii.gz -tr 2.5 -mpr 3 -bold 5,6 -thresh 0.25\n";
+  print "fcfast -bc -id 070519_4TT00258 -tr 2.5 -mpr 3 -bold 5,6 -thresh 0.25\n"; 
+    exit;
+}
+
+sub arcGetSession {
+	my $params = {@_};
+	my $prev_flush = $|;
+	$| = 1;
+	print "Getting session '$params->{session_id}' and saving to '$params->{session_id}.zip'\n" unless $options{quiet};
+	my $t0 = [gettimeofday];
+	my $ok = 0;
+	my $cmd = "arcget -s $params->{session_id}";
+	if( $params->{output_dir} ) {
+		$cmd .= " -o $params->{output_dir}";
+	}
+	if( $params->{xnat_host} ) {
+		$cmd .= " -host $params->{xnat_host}";
+	}
+	if( $params->{xnat_user} ) {
+		$cmd .= " -u $params->{xnat_user}";
+	}
+	if( $params->{xnat_pass} ) {
+		$cmd .= " -p $params->{xnat_pass}";
+	}
+	if( $params->{raw} ) {
+		$cmd .= " -r $params->{raw}";
+	}
+	my $arcgetlog = "arcget-session-$params->{session_id}.log";
+	print "# Writing to $arcgetlog\n" if $options{verbose};
+	open(ARCGETLOG,">> $arcgetlog") ||
+		die "ERROR: Unable to open file '$arcgetlog' for appending!\n",
+			"REASON: $!\n";
+	print "# Running:\n$cmd\n" if $options{verbose};
+	open(ARCGET,"$cmd|") ||
+		die "ERROR: Unable to run '$cmd'!\n",
+			"REASON: $!\n";
+	my $in_session_data = 0;
+	my $session_data = {};
+	my $download_started = 0;
+	my $scan_data = {};
+	my $checked = 0;
+	my $download_lines = 0;
+	my $line_sep = $/;
+	while(chomp(my $in = <ARCGET>)) {
+		print "ArcGet Lin: '$in'\n" if $options{verbose} > 1 && ! $download_started;
+		print ARCGETLOG $in,"\n";
+		if($in =~ m/ERROR/ || $in =~ m/Error / || $in =~ m/error\.log/) {
+			print `cat error.log`;
+			print $in,"\n";
+			die "ERROR: $cmd failed!\nSee above output for reason.\n";
+		}
+		if($in_session_data || $in =~ m/^SESSION ID:/) {
+			if($in eq "") {
+				$in_session_data = 0;
+				print " - Last Session Data\n" if $options{verbose} > 1;
+				next;
+			}
+			$in_session_data = 1;
+			my ($label, $data, $stuff) = split(/:\s+/,$in);
+			print " - Getting Session Data ('$label' => '$data')\n" if $options{verbose} > 1;
+			print "WARNING: Did not understand line '$in' while in session data section.\n" if($stuff);
+			$session_data->{$label} = $data;
+			next;
+		}
+		if($in =~ m/^(\d+)   (\S.*?)\s+(\S+)$/) {
+			print " - Getting Scan Data ('$1','$2','$3')\n" if $options{verbose} > 1;
+			$scan_data->{$1} = {type=>$2,usability=>$3};
+		}
+		if($in =~ m/^Requesting archived data for/) {
+			print " - Download Starting\n" if $options{verbose} > 1;
+			$/='';
+			$download_started = 1;
+			next;
+		}
+		if($download_started) {
+			if(! $checked) {
+				$session_data->{'LAB ID'} = $session_data->{'SUBJECT ID'} if !$session_data->{'LAB ID'} && $session_data->{'SUBJECT ID'};
+				$session_data->{'LAB ID'} = "Unknown Subject ID" unless $session_data->{'LAB ID'};
+				print "Downloading $session_data->{'SESSION ID'} from subject $session_data->{'LAB ID'} ".
+					"($session_data->{'AGE'}, $session_data->{'GENDER'}, $session_data->{'HANDEDNESS'})\n";
+				$checked = 1;
+			}
+			$download_lines++;
+			if($download_lines % 1_000 == 0) {
+				print "." unless($options{quiet});
+			}
+			if($download_lines % 60_000 == 0) {
+				printf " %10s %15s\n", pbytes(-s "$params->{session_id}.zip"), pbyterate((-s "$params->{session_id}.zip"), tv_interval($t0))
+					unless($options{quiet});
+			}
+		}
+	}
+	print "\nArcGet returned '$?'\n" if $options{verbose};
+	if($?) {
+		die "ERROR: ArcGet Failed.\n";
+	}
+	$/ = $line_sep;
+	print "\n";
+	my $bytes = -s "$params->{session_id}.zip";
+	my $t1 = tv_interval($t0);
+	unless($options{quiet}) {
+		printf 'Downloaded \'%s\' (%s) in %0.2f seconds at %s'."\n",$params->{session_id},pbytes($bytes),$t1,pbyterate($bytes,$t1);
+	}
+	$| = $prev_flush;
+}
+sub pbytes {
+	my $bytes = shift;
+	my ($num,$units) = ('','');
+	if($bytes > 1_048_576_000) {
+		$num = $bytes / 1_073_741_824;
+		$units = 'GB';
+	} elsif ($bytes > 1_024_000) {
+    $num = $bytes / 1_048_576;
+    $units = 'MB';
+	} elsif ($bytes > 1_000) {
+    $num = $bytes / 1_024;
+    $units = 'MB';
+	} else {
+    $num = $bytes ;
+    $units = ' Bytes';
+	}
+	sprintf('%0.2f %s',$num,$units);
+}
+sub pbyterate {
+	my ($bytes,$t1) = (@_);
+	my $num = pbytes($bytes / $t1);
+	"$num/sec";
+}

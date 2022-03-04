@@ -1,0 +1,2 @@
+./input/lh.Sub1_bld002_fs5.nii.gz
+./input/lh.Sub2_bld002_fs5.nii.gz ./input/lh.Sub2_bld003_fs5.nii.gz

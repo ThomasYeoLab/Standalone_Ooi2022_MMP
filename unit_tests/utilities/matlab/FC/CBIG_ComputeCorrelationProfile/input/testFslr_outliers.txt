@@ -1,0 +1,1 @@
+./input/rfMRI_REST1_LR_FD0.2_DV75_censoring.txt

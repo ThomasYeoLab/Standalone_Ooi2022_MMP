@@ -1,0 +1,57 @@
+
+## OS generated files
+.DS_Store*
+*._*
+.Spotlight*
+.Trash*
+*ehthumbs.db
+*Thumbs.db
+*~
+*.fuse_hidden*
+
+## Temporary files
+*.swp
+*~
+tmp*
+temp*
+_tmp
+_temp
+
+## Compiled files
+*.o
+*.o-*
+*.obj
+*.a
+*.class
+*.pyc
+
+## Matlab files
+*.mexmac*
+*.mexa*
+*.mat
+
+## Media files
+*.avi
+*.mp4
+*.mov
+*.gif
+*.png
+*.jpg
+*.jpeg
+*.tiff
+*.ppt
+*.doc
+*.pptx
+*.docx
+*.pdf
+*.nii
+*.nii.gz
+*.tar
+*.zip
+*.tar.gz
+*.tar.bz2
+
+## Other
+dk_flat
+wiki
+**/.vscode

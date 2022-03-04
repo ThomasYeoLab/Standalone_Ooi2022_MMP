@@ -1,0 +1,4 @@
+#!/usr/bin/env python
+import os,sys
+sys.stdout.write(os.path.realpath(os.path.expanduser(sys.argv[1])))
+

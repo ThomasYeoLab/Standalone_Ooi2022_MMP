@@ -1,0 +1,1 @@
+./input/lh.Sub1_bld002_fs5.nii.gz

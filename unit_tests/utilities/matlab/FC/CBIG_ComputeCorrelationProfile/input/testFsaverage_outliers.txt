@@ -1,0 +1,2 @@
+./input/bld002_FDRMS0.2_DVARS50_motion_outliers.txt
+./input/bld003_FDRMS0.2_DVARS50_motion_outliers.txt

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+source "$JH_INC/scriptutils.sh" || { echo "Could not load bashlib"; exit 1; }
+[ $# -lt 1 ] && echoerrx1 "$0 <Folder>"
+
+Folder=$(rtrim_slash "$1")
+chkdir "$Folder"
+
+Output=$Folder/files.txt
+find "$Folder" -type f -name "*.m" -o -name "*.cpp" -o -name "*.h" >| "$Output"
+for f in $(cat "$Output"); do
+    echo "$f"
+    expand -t 4 "$f" | sponge "$f"
+done

@@ -1,0 +1,402 @@
+4dfptoanalyze
+$Id: 4dfptoanalyze.c,v 1.22 2004/12/04 06:23:50 avi Exp mohanar $
+Usage:	4dfptoanalyze <(4dfp) filename>
+	option
+	-c<flt>	scale output values by specified factor
+	-8	output 8 bit unsigned char
+	-@<b|l>	output big or little endian (default CPU endian)
+actmapf_4dfp
+Usage:	actmapf_4dfp <format> <4dfp|conc input>
+ e.g.,	actmapf_4dfp -zu "3x3(11+4x15-)" b1_rmsp_dbnd_xr3d_norm
+ e.g.,	actmapf_4dfp -aanatomy -c10 -u "+" ball_dbnd_xr3d.conc
+ e.g.,	actmapf_4dfp -zu "4x124+" b1_rmsp_dbnd_xr3d -wweights.txt
+	option
+	-a<str>	specify 4dfp output root trailer (default = "actmap")
+	-c<flt>	scale output by specified factor
+	-u	scale weights to unit variance
+	-z	adjust weights to zero sum
+	-R	compute relative modulation (default absolute)
+	-w<weight file>	read (text) weights from specified filename
+	-@<b|l>	output big or little endian (default input endian)
+N.B.:	conc files must have extension "conc"
+N.B.:	when using weight files 'x' frames in format are not counted
+N.B.:	relative modulation images are zeroed where mean intensity < 0.5*whole_image_mode
+$Id: actmapf_4dfp.c,v 1.30 2006/09/24 00:25:39 avi Exp $
+analyzeto4dfp
+Usage: analyzeto4dfp <analyze_image>
+	option
+	-s	apply ROIScaleFactor
+	-x	flip first  axis
+	-y	flip second axis
+	-z	flip third  axis
+	-c	include center and mmppix fields in output ifh
+	-@<b|l>	output big or little endian (default CPU endian)
+$Id: analyzeto4dfp.c,v 1.11 2004/12/21 02:40:03 avi Exp mohanar $
+bin
+/space/nexus/1/users/avi-tools/bin: Permission denied.
+brec
+Usage:	brec <my_file[.rec]> [-depth_limit]
+4dfptoanalyze
+$Id: 4dfptoanalyze.c,v 1.22 2004/12/04 06:23:50 avi Exp mohanar $
+Usage:	4dfptoanalyze <(4dfp) filename>
+	option
+	-c<flt>	scale output values by specified factor
+	-8	output 8 bit unsigned char
+	-@<b|l>	output big or little endian (default CPU endian)
+actmapf_4dfp
+Usage:	actmapf_4dfp <format> <4dfp|conc input>
+ e.g.,	actmapf_4dfp -zu "3x3(11+4x15-)" b1_rmsp_dbnd_xr3d_norm
+ e.g.,	actmapf_4dfp -aanatomy -c10 -u "+" ball_dbnd_xr3d.conc
+ e.g.,	actmapf_4dfp -zu "4x124+" b1_rmsp_dbnd_xr3d -wweights.txt
+	option
+	-a<str>	specify 4dfp output root trailer (default = "actmap")
+	-c<flt>	scale output by specified factor
+	-u	scale weights to unit variance
+	-z	adjust weights to zero sum
+	-R	compute relative modulation (default absolute)
+	-w<weight file>	read (text) weights from specified filename
+	-@<b|l>	output big or little endian (default input endian)
+N.B.:	conc files must have extension "conc"
+N.B.:	when using weight files 'x' frames in format are not counted
+N.B.:	relative modulation images are zeroed where mean intensity < 0.5*whole_image_mode
+$Id: actmapf_4dfp.c,v 1.30 2006/09/24 00:25:39 avi Exp $
+analyzeto4dfp
+Usage: analyzeto4dfp <analyze_image>
+	option
+	-s	apply ROIScaleFactor
+	-x	flip first  axis
+	-y	flip second axis
+	-z	flip third  axis
+	-c	include center and mmppix fields in output ifh
+	-@<b|l>	output big or little endian (default CPU endian)
+$Id: analyzeto4dfp.c,v 1.11 2004/12/21 02:40:03 avi Exp mohanar $
+bin
+/space/nexus/1/users/avi-tools/bin: Permission denied.
+brec
+Usage:	brec <my_file[.rec]> [-depth_limit]
+C2T_4dfp
+$Id: C2T_4dfp.c,v 1.4 2004/12/03 22:01:18 rsachs Exp $
+Usage:	C2T_4dfp <(4dfp) imgroot> [(4dfp) outroot]
+ e.g.,	C2T_4dfp vm6c_b1
+ e.g.,	C2T_4dfp vm6c_b1 vm6c_b1T
+ N.B.: default output root = <imgroot>"T"
+ N.B.:	C2T_4dfp preserves the endian state of the input
+chk_endian
+Usage: chk_endian <image file name [4dfp/analyze]>
+Options: 
+ -a use analyze hdr file]>
+collate_slice_4dfp
+Usage:	collate_slice_4dfp <4dfp img1> <4dfp img2> ... <4dfp imgn> <4dfp imgout>
+	option
+	-v	verbose mode
+N.B.:	collate_slice_4dfp preserves the endian state of the input
+$Id: collate_slice_4dfp.c,v 1.7 2004/11/10 22:10:44 rsachs Exp mohanar $
+conc_test
+Usage:	conc_test <concfile>
+e.g.,	conc_test test.conc
+	-a<str>	specify output concfile trailer (default = "xxxx")
+	-@<b|l>	output big or little endian (default CPU-endian)
+$Id: conc_test.c,v 1.4 2006/09/23 05:08:29 avi Exp $
+crop_4dfp
+$Id: crop_4dfp.c,v 1.4 2004/11/18 21:38:23 rsachs Exp mohanar $
+Usage:	crop_4dfp <(4dfp) inroot> [(4dfp) outroot]
+	option
+	-<x|y|z><int>[to[<int>]	specify x y z crop limits
+	-s<x|y|z><int>	scroll specified axis by specified number of pixels
+	-f	interpret specifications under 4dfp<->analyze flips
+N.B.:	crop limit indices count from 1
+N.B.:	scrolling is done after cropping
+N.B.:	default (4dfp) output root is <(4dfp) inroot>"_crop"
+N.B.:	crop_4dfp preserves the endian state of the input
+dcm_to_4dfp
+$Id: dcm_to_4dfp.c,v 1.25 2006/02/23 20:43:46 jon Exp jon $
+Usage:	dcm_to_4dfp [-b base] [-d gggg eeee] [-f] [-g] [-u] file(s)
+Slice Spacing Options: [-c] [-t <flt> or S or T]
+Slice Position Options: [-X] [-Y] [-Z]
+ e.g.,	dcm_to_4dfp *
+   or,	dcm_to_4dfp -b ID101 -f -g -u *IMA
+   or,	dcm_to_4dfp -d 0008 0030 -t 4.98 -g *.dcm
+   or,	dcm_to_4dfp -b P0089 -t T -g mydir/* 
+Options:
+	[-b base] Output base filename follows the -b.
+	[-c]	    Slice Spacing: By Image Position (0020 0032).
+	[-d gggg eeee] Divide series by group and element number. 
+		 ** Default will divide volumes using ID series time (0008 0031). 
+	[-f]	    Directories will be created, and dicom files will be moved. 
+	[-g]	    Add image name, XYZ relative position, and number to rec file.
+
+	[-q]       Slice Spacing: Do not compute by Image Position.
+	[-t <flt>] Slice Spacing: Use input value.[-t <flt>]
+	[-t T]     Slice Spacing: Use Slice Thickness 0018 0050.[-t T]
+	[-t S]     Slice Spacing: Use Slice Spacing 0018 0088 [-t S](** Default)
+	[-u]	Output files named using sequence tag 0018 0024 plus number. 
+
+		4dfp Coordinant System is determined by Image Position (0020 0032). 
+		Multivolume and BOLD images are ordered by REL Image Number (0020 0013). 
+	[-X]	Sagittal:	image positions will be ordered low to high
+	[-Y]	Coronal:	image positions will be high to low
+	[-Z]	Transverse:	image positions will be high to low
+		** Default is transverse ordered by REL Image Number (0020 0013).
+	[-@ <b|l>]	output big or little endian (default CPU endian)
+enable_avi.csh
+PATH=/opt/SUNWspro/bin:/usr/ccs/bin:/usr/dt/bin:/usr/openwin/bin:/homes/13/asnyder/bin:/usr/pubsw/bin:/usr/bin:/usr/bin/X11:/usr/ucb:/space/nexus/1/users/nexus-tools/bin:/space/nexus/1/users/avi-tools:/usr/openwin/bin:/usr/dt/bin:/usr/ccs/bin/:/opt/SUNWspro/bin:.:/space/nexus/1/users/nexus-tools/bin:/space/nexus/1/users/avi-tools:/usr/openwin/bin:/usr/dt/bin:/usr/ccs/bin/:/opt/SUNWspro/bin
+LD_LIBRARY_PATH=:/opt/SUNWspro/lib:/opt/SUNWspro/lib
+endian_4dfp
+$Id: endian_4dfp.c,v 1.2 2006/04/01 06:50:18 avi Exp $
+Usage:	endian_4dfp <(4dfp) image>
+	option
+	-@<b|l|c> make <(4dfp) image> big, little or CPU endian
+	-t	perform var(log(fabs(.))) test
+N.B.:	<(4dfp) image> may be overwritten
+N.B.:	absent option -@ endian_4dfp only reports state of <(4dfp) image>
+flip_4dfp
+$Id: flip_4dfp.c,v 1.4 2004/11/16 22:26:42 rsachs Exp mohanar $
+Usage:	flip_4dfp <(4dfp) image> [(4dfp) output]
+e.g.,	flip_4dfp -yz vc345 vc345_flipyz
+	option
+	-x	flip x
+	-y	flip y
+	-z	flip z
+N.B.:	default output fileroot = <image>_flip[xyz]
+N.B.:	flip_4dfp preserves the endian state of the input
+frame_align_4dfp
+Usage: frame_align_4dfp <(4dfp) input> <frames_to_skip> [options]
+	[option]
+	-d <0|1>		specify slice acquisition direction (0:Inf->Sup; 1:Sup->Inf) (default=1)
+	-TR_vol <flt>	specify frame TR in sec (default=2.36)
+	-TR_src <flt>	specify slice TR in sec (default=TR_vol/nslice)
+	-@ <b|l>	output big or little endian (default CPU endian)
+e.g.:	frame_align_4dfp bold_run.4dfp.img 4
+	frame_align_4dfp bold_run.4dfp.img 4 -TR_vol 2.5
+	frame_align_4dfp bold_run.4dfp.img 4 -TR_vol 2.5 -TR_slc .136
+N.B.:	space between option and value
+$Id: frame_align_4dfp.c,v 1.17 2005/01/28 23:35:10 avi Exp mohanar $
+gauss_4dfp
+$Id: gauss_4dfp.c,v 1.12 2005/12/06 06:37:37 avi Exp mohanar $
+Usage:	gauss_4dfp <4dfp|conc input> f_half [outroot]
+ e.g.,	gauss_4dfp pt349_study9to9 0.1
+ e.g.,	gauss_4dfp p1234ho5 0.7 p1234ho5_g7
+	options
+	-w	(wrap) suppress x and y padding
+	-d	differentiate
+N.B.:	f_half is half frequency in 1/cm
+N.B.:	default output root is <inroot>_g<10*f_half>
+N.B.:	FWHM*f_half = (2ln2/pi) = 0.4412712
+N.B.:	conc files must have extension "conc"
+N.B.:	user outroot specification not possible with conc files
+N.B.:	gauss_4dfp preserves the endian state of the input
+glm_4dfp
+$Id: glm_4dfp.c,v 1.10 2006/09/24 01:09:44 avi Exp $
+Usage:	glm_4dfp <format> <profile> <4dfp|conc input>
+e.g.,	glm_4dfp "4x124+" doubletask.txt b1_rmsp_dbnd_xr3d_norm
+	option
+	-Z	supress automatic removal of mean from input regressors
+	-c<flt>	scale coefficient output images by specified factor
+	-o[str]	save regression coefficent images with specified trailer (default = "coeff")
+	-C<4dfp img>	read coefficients from specified file (default compute using <profile> and <input>)
+	-R	scale output regression coefficients by mean
+	-r[str]	save residual timeseries with specified trailer (default = "resid")
+	-@<b|l>	output big or little endian (default input endian)
+N.B.:	conc files must have extension "conc"
+N.B.:	<profile> lists temporal profiles (ASCII npts x ncol; '#' introduces comments)
+N.B.:	profile values past format end are ignored
+N.B.:	maximum format length presently is 16384 frames
+ifh2hdr
+$Id: ifh2hdr.c,v 1.8 2006/03/26 00:10:17 avi Exp $
+Usage:	ifh2hdr <(4dfp) file>
+ e.g.,	ifh2hdr vc654_mpr_atl -r-500to1500
+	option
+	-r<flt>[to<flt>]	set range
+N.B.:	ifh2hdr preserves the endian state of the input
+img_hist_4dfp
+$Id: img_hist_4dfp.c,v 1.20 2006/09/23 21:54:37 avi Exp $
+Usage:	img_hist_4dfp <(4dfp) image>
+	option
+	-b<int>	specify number of bins (default = 101)
+	-f<int>	select frame (counting from 1) of 4dfp stack
+	-t<flt>	specify image intensity threshold
+	-r<flt>[to<flt>]	specify histogram range
+	-m<(4dfp) image>	mask input using (non-zero voxels of) specified image
+	-h	create <image>.hist file suitable for plotting, e.g., with xmgr
+	-p	create <image>.dat  file suitable for input to numerical procedures
+	-u	normalize output .hist and .dat distributions to unit area
+	-s	report moments
+	-x	create <image>.xtile percentile listing
+N.B.:	only first frame of mask is used
+imgmax_4dfp
+Usage:	imgmax_4dfp <my_image[.4dfp.img]>
+	option
+	-m	report min as well as max
+	-e	report max/min values in scientific notation
+	-r	report root sum of squares
+	-v	verbose (time series) mode
+imgopr_4dfp
+Usage:	imgopr_4dfp -<operation><(4dfp) outroot> <(4dfp) image1> <(4dfp) image2> ...
+	operation
+	-a	add
+	-s	subtract (image1 - image2)
+	-p	product
+	-r	ratio (image1 / image2)
+	-e	mean (expectation)
+	-v	variance
+	-g	geometric mean
+	-n	count defined (see -u option) voxels
+	-x	voxelwize maximum
+	-y	voxelwize minimum
+	-G	report serial number (counting from 1) of image with greatest value
+	option
+	-u	count only defined (not NaN or 1.e-37 or 0.0) voxels
+	-N	output undefined voxels as NaN
+	-Z	output undefined voxels as 0
+	-E	output undefined voxels as 1.E-37 (default)
+	-c<flt>	multiply output by specified scaling factor
+	-l<lst>	read input file names from specified list file
+	-@<b|l>	output big or little endian (default input endian)
+$Id: imgopr_4dfp.c,v 1.8 2006/09/24 02:55:52 avi Exp $
+imgreg_4dfp
+$Id: imgreg_4dfp.c,v 1.12 2004/12/06 21:02:31 rsachs Exp mohanar $
+Usage:	imgreg_4dfp target_imag target_mask source_imag source_mask t4file [mode]
+or:	imgreg_4dfp target_imag        none source_imag source_mask t4file [mode]
+or:	imgreg_4dfp target_imag        none source_imag        none t4file [mode]
+	(default mode = 3
+paste_4dfp
+$Id: paste_4dfp.c,v 1.6 2005/07/30 01:09:54 avi Exp mohanar $
+Usage:	paste_4dfp <inlist> <outfile>
+	option
+	-a	append successive epochs (default average)
+	-p<int>	specify period in frames (default=1)
+ N.B.:	paste_4dfp preserves the endian state of the input
+ratio_4dfp
+$Id: ratio_4dfp.c,v 1.4 2003/10/16 04:34:15 avi Exp mohanar $
+Usage:	ratio_4dfp <(4dfp) numerator> <(4dfp) denominator)> <(4dfp) output>
+	option
+	-1	use only first frame of denominator image
+	-t<flt>	specify denominator image magnitude threshold (absolute value)
+	-c<flt>	intensity scale output image by specified factor
+N.B.:	ratio_4dfp preserves the endian state of the input
+read_hdr
+Usage: read_hdr <analyze_image>
+	option
+	-v	 Show header details
+$Id: read_hdr.c,v 1.2 2006/03/21 20:08:37 mohanar Exp $
+reindex_4dfp
+$Id: reindex_4dfp.c,v 1.4 2004/09/23 20:28:54 rsachs Exp mohanar $
+Usage:	reindex_4dfp <(4dfp> input> <index1> <index2> [options]
+	option
+	-v	verbose mode
+	-o<str>	specify 4dfp output root (default = <input>_r<index1><index2>)
+e.g.,	reindex_4dfp vcxyz_5678-9 3 4
+N.B.:	<index1> and <index2> must be unequal integers in the range 1-4
+N.B.:	reindex_4dfp preserves the endian state of the input
+S2T_4dfp
+$Id: S2T_4dfp.c,v 1.6 2006/06/20 19:11:11 mohanar Exp $
+Usage:	S2T_4dfp <(4dfp) imgroot> [(4dfp) outroot]
+ e.g.,	S2T_4dfp vm6c_mpr
+ e.g.,	S2T_4dfp vm6c_mpr vm6c_mprT
+	option
+ N.B.: default output root = <imgroot>"T"
+ N.B.:	S2T_4dfp preserves the endian state of the input
+scale_4dfp
+$Id: scale_4dfp.c,v 1.14 2006/06/08 21:14:25 mohanar Exp mohanar $
+Usage:	scale_4dfp <image_4dfp> <scale_factor> [options]
+	option
+	-E	preserve 1.0e-37 values (fidl NaN convention)
+	-a<str>	append trailer to output file name
+	-b<flt>	add specified constant to each voxel
+e.g.,	scale_4dfp b2_xfrm_avg 12
+e.g.,	scale_4dfp b2_xfrm_avg 12 -b5 -ax12+5
+N.B.:	<image_4dfp> is overwritten unless the trailer option is used
+N.B.:	<scale_factor> must be specified for proper operation
+N.B.:	scale_4dfp preserves the endian state of the input
+sqrt_4dfp
+Usage:	sqrt_4dfp <(4dfp) image> [outroot]
+e.g.,	sqrt_4dfp vce20_mpr
+	-@<b|l>	output big or little endian (default input endian)
+	-E	output undefined voxels as 1.0e-37 (default 0.0)
+N.B.:	default output filename = <image>_sqrt	
+$Id: sqrt_4dfp.c,v 1.6 2006/09/24 05:42:19 avi Exp $
+T2C_4dfp
+$Id: T2C_4dfp.c,v 1.2 2004/11/24 20:48:03 rsachs Exp $
+Usage:	T2C_4dfp <(4dfp) imgroot> [(4dfp) outroot]
+ e.g.,	T2C_4dfp vc12345_b1
+ e.g.,	T2C_4dfp vc12345_b1 vc12345_b1C
+ N.B.: default output root = <imgroot>"C"
+ N.B.:	T2C_4dfp preserves the endian state of the input
+T2S_4dfp
+$Id: T2S_4dfp.c,v 1.2 2004/11/24 21:12:09 rsachs Exp $
+Usage:	T2S_4dfp <(4dfp) imgroot> [(4dfp) outroot]
+ e.g.,	T2S_4dfp vm6c_mpr
+ e.g.,	T2S_4dfp vm6c_mpr vm6c_mprS
+ N.B.: default output root = <imgroot>"S"
+ N.B.:	T2S_4dfp preserves the endian state of the input
+test_progs.csh
+test_progs.csh: Command not found.
+test_rec
+Usage:	test_rec <outfile> <catfile> <random arguments...>
+ e.g.:	test_rec test_image.4dfp.img existing_image.4dfp.img 123456
+$Id: test_rec.c,v 1.3 2006/09/23 20:52:02 avi Exp $
+unpack_4dfp
+$Id: unpack_4dfp.c,v 1.5 2004/11/15 21:04:48 rsachs Exp mohanar $
+Usage:	unpack_4dfp <(4dfp) input> <(4dfp) output>
+ e.g.,	unpack_4dfp 030211_EL_b_1 030211_EL_b1
+	option
+	-V	read frame count from input ifh slice count
+	-R	multiply output x and y voxsiz by pack factor
+	-nx<int>	specify unpacked nx (default=64)
+	-ny<int>	specify unpacked ny (default=64)
+	-@<b|l>	output big or little endian (default CPU endian)
+var_4dfp
+$Id: var_4dfp.c,v 1.13 2006/09/24 02:20:47 avi Exp $
+Usage:	var_4dfp <(4dfp|conc) input>
+ e.g.,	var_4dfp -sn3 -c10 test_b1_rmsp_dbnd
+	option
+	-d	debug mode
+	-m	remove mean volume from stack
+	-s	compute s.d. about mean
+	-v	compute variance about mean (default operation)
+	-z	output logical and of all nonzero defined voxels
+	-n<int>	specify number of pre-functional frames per run (default = 0)
+	-f<str>	specify frames to count format, e.g., "4x120+4x76+"
+	-c<flt>	scale output image values by specified factor
+	-N	output undefined voxels as NaN
+	-Z	output undefined voxels as 0
+	-E	output undefined voxels as 1.e-37 (default)
+	-@<b|l>	output big or little endian (default input endian)
+N.B.:	input conc files must have extension "conc"
+N.B.:	voxelwise mean is individually computed over each run in conc
+N.B.:	-f option overrides -n
+zero_gt_4dfp
+$Id: zero_gt_4dfp.c,v 1.7 2006/06/08 20:22:22 mohanar Exp $
+Usage:	zero_gt_4dfp <flt> <file_4dfp> [outroot]
+ e.g.,	zero_gt_4dfp 90 pt349_study9to9
+ e.g.,	zero_gt_4dfp 90 pt349_study9to9 pt349_study9to9z
+ N.B.:	The default output 4dfp root is <file_4dfp>"z"
+ N.B.:	zero_gt_4dfp preserves the endian state of the input
+zero_gtlt_4dfp
+$Id: zero_gtlt_4dfp.c,v 1.6 2006/06/08 20:22:31 mohanar Exp $
+Usage:	zero_gtlt_4dfp <flt[to<flt>]> <file_4dfp> [outroot]
+ e.g.,	zero_gtlt_4dfp -30to90 pt349_study9to9
+ N.B.:	zero_gtlt_4dfp zeros voxels inside the specified range
+ N.B.:	The default output 4dfp root is <file_4dfp>"z"
+ N.B.:	zero_gtlt_4dfp preserves the endian state of the input
+zero_lt_4dfp
+$Id: zero_lt_4dfp.c,v 1.14 2006/06/08 20:22:03 mohanar Exp $
+Usage:	zero_lt_4dfp <flt> <file_4dfp> [outroot]
+ e.g.,	zero_lt_4dfp 90 pt349_study9to9
+ e.g.,	zero_lt_4dfp 90 pt349_study9to9 pt349_study9to9z
+ N.B.:	The default output 4dfp root is <file_4dfp>"z"
+ N.B.:	zero_lt_4dfp preserves the endian state of the input
+zero_ltgt_4dfp
+$Id: zero_ltgt_4dfp.c,v 1.6 2006/06/08 20:22:46 mohanar Exp $
+Usage:	zero_ltgt_4dfp <flt[to<flt>]> <file_4dfp> [outroot]
+ e.g.,	zero_ltgt_4dfp -30to90 pt349_study9to9
+ N.B.:	zero_ltgt_4dfp zeros voxels outside the specified range
+ N.B.:	The default output 4dfp root is <file_4dfp>"z"
+ N.B.:	zero_ltgt_4dfp preserves the endian state of the input
+zero_slice_4dfp
+$Id: zero_slice_4dfp.c,v 1.2 2004/09/30 20:47:22 rsachs Exp mohanar $
+Usage:	zero_slice_4dfp <image_file> <x|y|z> <istart> <iend> [output_file]
+ e.g.,	zero_slice_4dfp vce20_mpr z 1 3
+   or,	zero_slice_4dfp vce20_mpr z 1 3 vce20_mprz
+ N.B.:	default output filename = <image_file>z	
+ N.B.:	zero_slice_4dfp preserves the endian state of the input

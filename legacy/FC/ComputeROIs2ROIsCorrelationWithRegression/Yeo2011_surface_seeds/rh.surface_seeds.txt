@@ -1,0 +1,6 @@
+$CODE_DIR/ComputeROIs2ROIsCorrelationWithRegression/Yeo2011_surface_seeds/rh.M1F.mgh
+$CODE_DIR/ComputeROIs2ROIsCorrelationWithRegression/Yeo2011_surface_seeds/rh.M1H.mgh
+$CODE_DIR/ComputeROIs2ROIsCorrelationWithRegression/Yeo2011_surface_seeds/rh.M1T.mgh
+$CODE_DIR/ComputeROIs2ROIsCorrelationWithRegression/Yeo2011_surface_seeds/rh.S1F.mgh
+$CODE_DIR/ComputeROIs2ROIsCorrelationWithRegression/Yeo2011_surface_seeds/rh.S1H.mgh
+$CODE_DIR/ComputeROIs2ROIsCorrelationWithRegression/Yeo2011_surface_seeds/rh.S1T.mgh

@@ -1,0 +1,14 @@
+image: alpine
+
+before_script:
+  - apk add --no-cache rsync
+
+pages:
+  stage: deploy
+  script:
+  - rsync -rltpP ./doc/ ./public/
+  artifacts:
+    paths:
+    - public
+  only:
+  - master

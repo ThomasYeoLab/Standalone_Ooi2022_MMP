@@ -1,0 +1,2 @@
+./input/testFslr_sub1_rfMRI_REST1_LR_Atlas_MSMAll_hp2000_clean.dtseries.nii ./input/testFslr_sub1_rfMRI_REST1_RL_Atlas_MSMAll_hp2000_clean.dtseries.nii
+./input/testFslr_sub2_rfMRI_REST1_LR_Atlas_MSMAll_hp2000_clean.dtseries.nii

@@ -1,0 +1,244 @@
+#!/bin/env perl
+
+use strict;
+
+use Getopt::Long qw(:config no_ignore_case);
+
+# Who am I and how did I get here?
+my ($prog,$progdir);
+BEGIN {
+  use Cwd qw(abs_path);;
+  use File::Basename;
+  ($prog,$progdir) = fileparse(abs_path($0));
+  my $libdir = abs_path($progdir."../lib");
+  #print "\$prog='$prog',\$progdir='$progdir', \$libdir='$libdir'\n";
+  push @INC, $libdir, $progdir."lib", $progdir;
+  #print join(':',@INC),"\n";
+}
+
+my $version_string   = "<REPLACE:VERSION>";
+my $revision_string  = "<REPLACE:HG_REVISION>";
+my $sha256sum_string = "<REPLACE:CODE_SHA256>";
+my $md5sum_string    = "<REPLACE:CODE_MD5>";
+my $warnings = "";
+
+# Keep track of warnings, and put them at the bottom of any output
+# to that they're not lost in the bunch of stuff that might scroll by.
+my $warnings = "";
+
+# What's this all about?
+sub usage {
+  $warnings = "\n$warnings" if $warnings;
+  <<"EOF"
+================================================================================
+$prog: Update version information in a file
+--------------------------------------------------------------------------------
+Usage: $prog [--version | --use-revision] file1 file2 ...
+
+Looks for occurances of:
+ \"$version_string\"
+ \"$revision_string\"
+ \"$sha256sum_string\"
+ \"$md5sum_string\"
+If files and replaces them with the provided or gleaned information.
+
+--------------------------------------------------------------------------------
+OPTIONS:
+
+--version VER
+      The version to put in, in free-form text format (e.g., \"0.9.1\").
+--use-revision
+      Use the mercurial revision number as the version
+================================================================================$warnings
+EOF
+};
+
+# Set defaults:
+my $opts={verbose=>0,version=>""};
+
+# Get the command-line options
+GetOptions($opts,
+           'verbose|v',
+           'version=s',
+           'use-revision',
+           'help|h|?',
+          )
+  || die &usage, "ERROR: Did not understand command line options.\n";
+
+if(! @ARGV) {
+  die &usage, "ERROR: No files to modify provided.\n";
+}
+
+if(! $opts->{version} && ! $opts->{'use-revision'} ) {
+  die &usage, "ERROR: You must either specify --version of --use-revision.\n";
+}
+
+my $version_string_re = quotemeta($version_string);
+my $revision_string_re = quotemeta($revision_string);
+my $sha256sum_string_re = quotemeta($sha256sum_string);
+my $md5sum_string_re = quotemeta($md5sum_string);
+
+for my $file (@ARGV) {
+  my $file_re = quotemeta($file);
+  my $backup = $file;
+  # Split extension, if any
+  if($backup =~ m/^(.*)\.(.*?)$/) {
+    $backup = "$1.versioned.$2"
+  } else {
+    $backup = "$backup.versioned.out"
+  }
+  if(! -e $file) {
+    $warnings .= "ERROR: '$file' does not exist!\n";
+    next;
+  }
+  if(! -r $file) {
+    $warnings .= "ERROR: '$file' is not readable!\n";
+    next;
+  }
+  if(! -w $file) {
+    $warnings .= "ERROR: '$file' is not writable!\n";
+    next;
+  }
+  if(! -s $file) {
+    $warnings .= "ERROR: '$file' is empty!\n";
+    next;
+  }
+  if(! open(FILE1, "<", $file)) {
+    $warnings .= "ERROR: Could not open '$file' for reading: $!\n";
+    next;
+  }
+  if(! open(FILE2, ">", $backup)) {
+    $warnings .= "ERROR: Could create '$backup' for writing: $!\n";
+    next;
+  }
+
+  my $err = "";
+
+
+  if(! open(HG, "hg log -l 1 \"$file\" |")) {
+    $err .= "ERROR: Unable run 'hg log -l 1 \"$file\"'.\n";
+  } else {
+    chomp(my $line = <HG>);
+    if($line =~ s/^changeset:\s+([0-9]+):([0-9a-fA-F]+)$/$1:$2/) {
+      $opts->{revision_num} = $1;
+      $opts->{revision_sum} = $2;
+      $opts->{revision} = $line;
+      print "Revision is '$opts->{revision}'\n";
+    } else {
+      $err .= "ERROR: Unable to deterine changeset by running 'hg log -l 1 \"$file\"'.\n";
+      $err .= "ERROR: Offending output '$line'.\n";
+    }
+  }
+  close(HG);
+
+  if(! open(HG, "hg status \"$file\" |")) {
+    $err .= "ERROR: Unable run 'hg status \"$file\"'.\n";
+  } else {
+    chomp(my $line = <HG>);
+    if($line eq "") {
+      # No news is good news, aparently.
+    } else {
+      my($status, $hg_file) = split(/\s+/,$line,2);
+      if($hg_file ne $file) {
+      } elsif($status eq "M") {
+        print "WARNING: \"$file\" has been modified since last checkin. Revision will reflect that.\n";
+        $opts->{modified} = 1;
+        $opts->{revision} .= " (Plus Uncommitted Changes)";
+        print "New revision is '$opts->{revision}'\n";
+      } elsif($status eq "C") {
+        # Never seen this, but it's supposed to mean checked in.
+      } else {
+        $err .= "ERROR: \"$file\" has a status of '$status'. It must under mercurial revision control and be either unmodified since checkin or only modified.";
+      }
+    }
+  }
+  close(HG);
+
+  chomp($opts->{sha256sum} = `sha256sum "$file"`);
+  if($opts->{sha256sum} =~ s/^([0-9a-fA-F]+)\s+$file_re/$1/) {
+    print "sha256sum is '$opts->{sha256sum}'.\n";
+  } else {
+    $err .= "ERROR: Unable to deterine sha256sum by running 'sha256sum \"$file\"'.\n";
+    $err .= "ERROR: Offending output '$opts->{sha256sum}'.\n";
+  }
+
+  chomp($opts->{md5sum} = `md5sum "$file"`);
+  if($opts->{md5sum} =~ s/^([0-9a-fA-F]+)\s+$file_re/$1/) {
+    print "md5sum is '$opts->{md5sum}'.\n";
+  } else {
+    $err .= "ERROR: Unable to deterine md5sum by running 'md5sum \"$file\"'.\n";
+    $err .= "ERROR: Offending output '$opts->{md5sum}'.\n";
+  }
+
+  if(! $opts->{version}) {
+    $opts->{version} = $opts->{revision};
+  }
+
+
+  if($opts->{modified}) {
+    $opts->{version} .= "." . ($opts->{revision_num} + 1);
+    $opts->{version} .= " (pre-release)";
+  } else {
+    $opts->{version} .= "." .$opts->{revision_num};
+  }
+
+  print "VERSION is '$opts->{version}'.\n";
+
+  my $line_number = 0;
+  my $version_string_re_count = 0;
+  my $revision_string_re_count = 0;
+  my $sha256sum_string_re_count = 0;
+  my $md5sum_string_re_count = 0;
+  if(! $err) {
+    while(my $line = <FILE1>) {
+      $line_number ++;
+      while($line =~ s/$version_string_re/$opts->{version}/) {
+        $version_string_re_count ++;
+      }
+      while($line =~ s/$revision_string_re/$opts->{revision}/) {
+        $revision_string_re_count ++;
+      }
+      while($line =~ s/$sha256sum_string_re/$opts->{sha256sum}/) {
+        $sha256sum_string_re_count ++;
+      }
+      while($line =~ s/$md5sum_string_re/$opts->{md5sum}/) {
+        $md5sum_string_re_count ++;
+      }
+      print FILE2 $line;
+    }
+  } else {
+    print $err;
+    $warnings .= "File \"$file\" had errors.\n";
+  }
+  close(FILE1);
+  close(FILE2);
+  if(! ($version_string_re_count + $revision_string_re_count + $sha256sum_string_re_count + $md5sum_string_re_count) ) {
+    $warnings .= "File \"$file\" had nothing to update (could not find placeholder strings).\n";
+  } else {
+    if(! $version_string_re_count) {
+      print "WARNING: No version string found to replace in \"$file\".\n";
+    } elsif($version_string_re_count > 1) {
+      print "WARNING: $$version_string_re_count version strings found to replace in \"$file\", normally there is only one.\n";
+    }
+    if(! $revision_string_re_count) {
+      print "WARNING: No revision string found to replace in \"$file\".\n";
+    } elsif($revision_string_re_count > 1) {
+      print "WARNING: $$revision_string_re_count revision strings found to replace in \"$file\", normally there is only one.\n";
+    }
+    if(! $sha256sum_string_re_count) {
+      print "WARNING: No sha256sum string found to replace in \"$file\".\n";
+    } elsif($sha256sum_string_re_count > 1) {
+      print "WARNING: $$sha256sum_string_re_count sha256sum strings found to replace in \"$file\", normally there is only one.\n";
+    }
+    if(! $md5sum_string_re_count) {
+      print "WARNING: No md5sum string found to replace in \"$file\".\n";
+    } elsif($md5sum_string_re_count > 1) {
+      print "WARNING: $$md5sum_string_re_count md5sum strings found to replace in \"$file\", normally there is only one.\n";
+    }
+  }
+}
+
+if($warnings) {
+  print $warnings;
+  exit(1);
+}

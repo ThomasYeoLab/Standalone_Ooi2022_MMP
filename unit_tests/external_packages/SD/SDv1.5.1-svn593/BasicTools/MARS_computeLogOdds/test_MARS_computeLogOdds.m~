@@ -1,0 +1,180 @@
+classdef test_MARS_computeLogOdds < matlab.unittest.TestCase
+%
+% Target function:
+%                 [dist_transform, LogOdds, normalized_prob_mat] = MARS_computeLogOdds(MARS_sbjMesh, alpha, BIG_NO)
+%
+% Case design:
+%                 Case 1 = compute LogOdds on lh fs5 surface mesh, setting
+%                 alpha = 0.5, BIG_NO = Inf
+%                
+%                 Case 1 = compute LogOdds on rh fs5 surface mesh, setting
+%                 alpha = 0.5, BIG_NO = Inf
+%
+% Written by Yang Qing and CBIG under MIT license: https://github.com/ThomasYeoLab/CBIG/blob/master/LICENSE.md
+
+
+
+    methods (Test)
+        function test_lh_Case(testCase)
+            % path setting
+            CBIG_CODE_DIR = getenv('CBIG_CODE_DIR');
+            UnitTestDir = fullfile(CBIG_CODE_DIR, 'unit_tests');
+            FolderStructure = fullfile('external_packages', 'SD', 'SDv1.5.1-svn593', ...
+                'BasicTools', 'MARS_computeLogOdds');
+            replace_unit_test = load(fullfile(CBIG_CODE_DIR, 'unit_tests', 'replace_unittest_flag'));
+            
+            InputDir = fullfile(UnitTestDir, FolderStructure, 'input');
+            ReferenceDir = fullfile(UnitTestDir, FolderStructure, 'ref_output');
+            
+            % load reference result
+            load(fullfile(ReferenceDir, 'ref_dist_transform_lh.mat')); % load in ref_dist_transform
+            load(fullfile(ReferenceDir, 'ref_LogOdds_lh.mat')); % load in ref_LogOdds
+            load(fullfile(ReferenceDir, 'ref_normalized_prob_mat_lh.mat')); % load in ref_normalized_prob_mat
+
+            % load input surface mesh data
+            load(fullfile(InputDir, 'lh_fs5_MARS_sbjMesh.mat')); % load in lh fsaverage5 mesh: lh
+            
+            % parameter setting
+            alpha = 0.5;
+            BIG_NO = Inf;
+            
+            % generate new results
+            [dist_transform, LogOdds, normalized_prob_mat] = MARS_computeLogOdds(lh, alpha, BIG_NO);
+            
+            % replace unit test if flag is 1
+            if replace_unit_test
+                % display differences
+                new_fields = fieldnames(newResult);
+                ref_fields = fieldnames(expectedResult);
+                if ~isequal(new_fields,ref_fields)
+                    disp('Fields of output structure are different')
+                else
+                    for i = 1:length(new_fields)
+                        disp(['Old field ' ref_fields{i} 'size is [' num2str(size(getfield(expectedResult,new_fields{i}))) ']'] );
+                        disp(['New field ' new_fields{i} 'size is [' num2str(size(getfield(newResult,new_fields{i}))) ']']);
+                        disp(['Sum of absolute difference in ' ref_fields{i} ' is ' num2str(sum(sum(abs(getfield(newResult, new_fields{i}) - getfield(expectedResult, new_fields{i}))))) ]);             
+                    end
+                end
+                
+                % save and load new ref output file
+                expectedResult = newResult;
+                save(ref_output_file, 'expectedResult');
+                load(ref_output_file);
+            end  
+            
+            % check dist_transform
+            diff = dist_transform - ref_dist_transform;
+            
+            assert(isequal(size(dist_transform), size(ref_dist_transform)), ...
+                'size of result dis_transform is different')
+            
+            assert(all(all(abs(diff) < 1e-12)), ...
+                sprintf('dis_transform result off by %f (sum absolute difference)', ...
+                sum(sum(abs(diff)))));
+            
+            % check LogOdds
+            diff = LogOdds - ref_LogOdds;
+           
+            assert(isequal(size(LogOdds), size(ref_LogOdds)), ...
+                'size of result LogOdds is different')
+            
+            assert(all(all(abs(diff) < 1e-12)), ...
+                sprintf('LogOdds result off by %f (sum absolute difference)', ...
+                sum(sum(abs(diff)))));
+            
+            % check normalized_prob_mat
+            diff = normalized_prob_mat - ref_normalized_prob_mat;
+            
+            assert(isequal(size(normalized_prob_mat), size(ref_normalized_prob_mat)),...
+                'size of result normalized_prob_mat is different')
+            
+            assert(all(all(abs(diff) < 1e-12)), ...
+                sprintf('normalized_prob_mat result off by %f (sum absolute difference)', ...
+                sum(sum(abs(diff)))));
+
+        end
+        
+        
+        function test_rh_Case(testCase)
+            % path setting
+            CBIG_CODE_DIR = getenv('CBIG_CODE_DIR');
+            UnitTestDir = fullfile(CBIG_CODE_DIR, 'unit_tests');
+            FolderStructure = fullfile('external_packages', 'SD', 'SDv1.5.1-svn593', ...
+                'BasicTools', 'MARS_computeLogOdds');
+            replace_unit_test = load(fullfile(CBIG_CODE_DIR, 'unit_tests', 'replace_unittest_flag'));
+            
+            InputDir = fullfile(UnitTestDir, FolderStructure, 'input');
+            ReferenceDir = fullfile(UnitTestDir, FolderStructure, 'ref_output');
+            
+            % load reference result
+            load(fullfile(ReferenceDir, 'ref_dist_transform_rh.mat')); % load in ref_dist_transform
+            load(fullfile(ReferenceDir, 'ref_LogOdds_rh.mat')); % load in ref_LogOdds
+            load(fullfile(ReferenceDir, 'ref_normalized_prob_mat_rh.mat')); % load in ref_normalized_prob_mat
+
+            % load input surface mesh data
+            load(fullfile(InputDir, 'rh_fs5_MARS_sbjMesh.mat')); % load in rh fsaverage5 mesh: rh
+            
+            % parameter setting
+            alpha = 0.5;
+            BIG_NO = Inf;
+            
+            % generate new results
+            [dist_transform, LogOdds, normalized_prob_mat] = MARS_computeLogOdds(rh, alpha, BIG_NO);
+            
+            % replace unit test if flag is 1
+            if replace_unit_test
+                % display differences
+                disp(['Dist transform diffference is [' num2str(all(all(abs(dist_transform - ref_dist_transform))))) ']'] );
+                disp(['LogOdds difference is [' num2str(all(all(abs(LogOdds - ref_LogOdds))))) ']']);
+                disp(['Old norm prob mat size is [' num2str(size(normalized_prob_mat)) ']'])
+                disp(['New norm prob mat size is [' num2str(size(ref_normalized_prob_mat)) ']'])
+                disp(['Norm prob mat difference is ' num2str(sum(sum(abs(normalized_prob_mat - ref_normalized_prob_mat)))) ]);             
+                
+                % save and load new ref output file
+                ref_dist_transform = dist_transform;
+                ref_LogOdds = LogOdds;
+                ref_normalized_prob_mat =
+                
+                save(fullfile(ReferenceDir, 'ref_dist_transform_rh.mat')); % load in ref_dist_transform
+                save(fullfile(ReferenceDir, 'ref_LogOdds_rh.mat')); % load in ref_LogOdds
+                save(fullfile(ReferenceDir, 'ref_normalized_prob_mat_rh.mat')); % load in ref_normalized_prob_mat
+                
+                load(fullfile(ReferenceDir, 'ref_dist_transform_rh.mat')); % load in ref_dist_transform
+                load(fullfile(ReferenceDir, 'ref_LogOdds_rh.mat')); % load in ref_LogOdds
+                load(fullfile(ReferenceDir, 'ref_normalized_prob_mat_rh.mat')); % load in ref_normalized_prob_mat
+            end  
+            
+            % check dist_transform
+            diff = dist_transform - ref_dist_transform;
+            
+            assert(isequal(size(dist_transform), size(ref_dist_transform)), ...
+                'size of result dis_transform is different')
+            
+            assert(all(all(abs(diff) < 1e-12)), ...
+                sprintf('dis_transform result off by %f (sum absolute difference)', ...
+                sum(sum(abs(diff)))));
+            
+            % check LogOdds
+            diff = LogOdds - ref_LogOdds;
+           
+            assert(isequal(size(LogOdds), size(ref_LogOdds)), ...
+                'size of result LogOdds is different')
+            
+            assert(all(all(abs(diff) < 1e-12)), ...
+                sprintf('LogOdds result off by %f (sum absolute difference)', ...
+                sum(sum(abs(diff)))));
+            
+            % check normalized_prob_mat
+            diff = normalized_prob_mat - ref_normalized_prob_mat;
+            
+            assert(isequal(size(normalized_prob_mat), size(ref_normalized_prob_mat)),...
+                'size of result normalized_prob_mat is different')
+            
+            assert(all(all(abs(diff) < 1e-12)), ...
+                sprintf('normalized_prob_mat result off by %f (sum absolute difference)', ...
+                sum(sum(abs(diff)))));
+
+        end
+        
+    end
+end

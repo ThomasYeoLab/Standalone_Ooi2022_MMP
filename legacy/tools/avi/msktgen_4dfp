@@ -1,0 +1,85 @@
+#!/bin/csh -f
+# $Header: /data/petsun4/data1/solaris/csh_scripts/RCS/msktgen_4dfp,v 1.11 2005/08/12 20:16:26 avi Exp avi $
+# $Log: msktgen_4dfp,v $
+# Revision 1.11  2005/08/12  20:16:26  avi
+# add 711-2V
+#
+set idstr =	'$Id: msktgen_4dfp,v 1.11 2005/08/12 20:16:26 avi Exp avi $'
+set program =	$0; set program = $program:t;
+set wrkdir =	$cwd
+if (! $?RELEASE) then
+	set bindir = /data/petsun4/data1/solaris
+else
+	set bindir = $RELEASE
+endif
+if (! $?REFDIR)	then
+	set refdir = /data/petsun9/data2/petmri
+else
+	set refdir = $REFDIR
+endif
+set thresh =	200
+
+echo $idstr
+if (${#argv} < 1) then
+	echo "Usage:	"$program" <(4dfp) image> [threshold]"
+	echo "e.g.,	"$program" 4859-5_mpr"
+	echo "N.B.:	default threshold = 200"
+	echo "	Specifiy a higher threshold, e.g., 400 for a tighter mask and vice versa"
+	echo "N.B.:	"$program" uses the first legitimate atlas transform t4 file it sees in "
+	echo "	the current working directory, i.e., one of <image>_to_711-2[BCKOYGHV]_t4"
+	exit 1
+endif
+if (${#argv} > 1) set thresh = $2
+
+set img = $1:r
+set img = $img:r
+if (! -e $img.4dfp.img || ! -e $img.4dfp.ifh) then
+	echo $img.4dfp.img or $img.4dfp.ifh not found
+	exit -1
+endif
+
+if 	   (-e $img"_to_711-2B_t4") then
+	set t4file = $img"_to_711-2B_t4"
+	set refmsk = 711-2B_mask_g5
+else	if (-e $img"_to_711-2K_t4") then
+	set t4file = $img"_to_711-2K_t4"
+	set refmsk = 711-2B_mask_g5
+else	if (-e $img"_to_711-2L_t4") then
+	set t4file = $img"_to_711-2L_t4"
+	set refmsk = 711-2B_mask_g5
+else	if (-e $img"_to_711-2A_t4") then
+	set t4file = $img"_to_711-2A_t4"
+	set refmsk = 711-2A_mask_g5
+else	if (-e $img"_to_711-2C_t4") then
+	set t4file = $img"_to_711-2C_t4"
+	set refmsk = young6+6_avg_222_mask0_g9
+else	if (-e $img"_to_711-2O_t4") then
+	set t4file = $img"_to_711-2O_t4"
+	set refmsk = young6+6_avg_222_mask0_g9
+else	if (-e $img"_to_711-2Y_t4") then
+	set t4file = $img"_to_711-2Y_t4"
+	set refmsk = young6+6_avg_222_mask0_g9
+else	if (-e $img"_to_711-2G_t4") then
+	set t4file = $img"_to_711-2G_t4"
+	set refmsk = young6+6_avg_222_mask0_g9
+else	if (-e $img"_to_711-2H_t4") then
+	set t4file = $img"_to_711-2H_t4"
+	set refmsk = 711-2B_mask_g5
+else	if (-e $img"_to_711-2V_t4") then
+	set t4file = $img"_to_711-2V_t4"
+	set refmsk = 711-2B_mask_g5
+else
+	echo "atlas transform file (e.g., "$img"_to_711-2B_t4) not found"
+	exit -1
+endif
+
+echo computing tailored mask $img"_mskt"
+t4_inv $t4file temp$$
+sed '/scale:/d' temp$$ >! atlas_to_$img"_t4"
+
+t4img_4dfp atlas_to_$img"_t4" $refdir/$refmsk temp$$ -O$img
+/bin/rm atlas_to_$img"_t4"
+zero_lt_4dfp $thresh temp$$ $img"_mskt"
+
+/bin/rm temp$$*
+exit

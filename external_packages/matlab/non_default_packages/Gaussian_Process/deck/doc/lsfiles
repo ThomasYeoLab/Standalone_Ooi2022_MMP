@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+
+"""
+List files in given folder into columns of specified or adaptive width.
+
+EXAMPLE
+-------
+
+    $ ./lsfiles ../+dk -C 20 -L 80 -x README.md realpath
+
+assert.m            formatmv.m          load.m              savehd.m            
+bytesize.m          forward.m           log.m               swap.m              
+c2s.m               getelem.m           mapfun.m            tocol.m             
+call.m              getopt.m            notify.m            torow.m             
+chkmver.m           gridfit.m           pass.m              tostr.m             
+compare.m           grouplabel.m        path.m              trywait.m           
+countunique.m       groupunique.m       reduce.m            unwrap.m            
+deal.m              here.m              reject.m            verb.m              
+debug.m             info.m              s2c.m               warn.m              
+disp.m              kvfun.m             save.m              wrap.m  
+
+"""
+
+import os
+import math
+import argparse 
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser('lsfiles')
+
+    parser.add_argument( '-d', '--folder', help='Folder to list', default='.' )
+    parser.add_argument( '-f', '--files', help='Manually specify list of files', nargs='+', default=[] )
+
+    parser.add_argument( '-C', '--column-width', help='Force column width', default=0, type=int )
+    parser.add_argument( '-L', '--line-width', help='Maximum line-width', default=120, type=int )
+    parser.add_argument( '-x', '--exclude', help='Exclude specified filenames', nargs='+', default=[] )
+
+    parser.add_argument( '--pad-factor', help='Padding factor', default=1.2, type=float )    
+    parser.add_argument( '--prefix', help='Prepend string to each line', default='' )
+    parser.add_argument( '--suffix', help='Append string to each line', default='' )
+    args = parser.parse_args()
+
+    if args.files:
+        flist = args.files 
+    else:
+        with os.scandir(args.folder) as it:
+            flist = [ f.name for f in it if f.is_file() ]
+
+    flist = [ f for f in sorted(flist) if f not in args.exclude ]
+    nfile = len(flist)
+
+    maxl = max([ len(f) for f in flist ])
+    linw = args.line_width
+
+    if args.column_width > 0:
+        colw = args.column_width
+    else:
+        colw = math.ceil(args.pad_factor * maxl)
+
+    assert colw >= maxl, 'Column width smaller than largest item width'
+    assert colw <= linw, 'Column width larger than line width'
+
+    item = [ f.ljust(colw) for f in flist ]
+    ncol = math.floor( linw / colw )
+    nrow = math.ceil( nfile / ncol )
+
+    #print( flist )
+    #print( '%d x %d (=%d)' % (nrow, ncol, nfile) )
+
+    for r in range(nrow):
+        print( args.prefix + ''.join( item[r:nfile:nrow] ) + args.suffix )
+    

@@ -1,0 +1,6 @@
+function R = extrinsic( alpha, beta, gamma )
+
+    R = ant.rot.around_y(alpha) ...
+        * ant.rot.around_x(beta) ...
+        * ant.rot.around_y(gamma);
+end

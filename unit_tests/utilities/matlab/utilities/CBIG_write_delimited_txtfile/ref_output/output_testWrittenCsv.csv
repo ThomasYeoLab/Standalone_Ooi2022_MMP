@@ -1,0 +1,5 @@
+SITE_ID,SUB_ID,DX_GROUP,SEX
+siteA,aaaaa,1,1
+siteB,ccccc,0,1
+siteC,ddddd,NaN,1
+siteD,eeeee,1,1

@@ -1,0 +1,20 @@
+#!/usr/bin/csh
+
+foreach dir (. /space/nexus/1/users/nexus-tools/bin /space/nexus/1/users/avi-tools)
+	if (-d $dir) setenv PATH "$PATH":$dir
+end
+	
+foreach dir (/usr/openwin/bin /usr/dt/bin /usr/ccs/bin/ /opt/SUNWspro/bin)
+	if (-d $dir) setenv PATH "$PATH":$dir
+end
+
+if (! $?LD_LIBRARY_PATH) setenv LD_LIBRARY_PATH ""
+foreach dir (/opt/SUNWspro/lib)
+	if (-d $dir) setenv LD_LIBRARY_PATH "$LD_LIBRARY_PATH":$dir
+end
+
+echo "PATH="$PATH
+echo "LD_LIBRARY_PATH="$LD_LIBRARY_PATH
+
+alias sol4 ssh -Y 192.168.234.104
+alias goavi cd /space/nexus/1/users/avi-tools

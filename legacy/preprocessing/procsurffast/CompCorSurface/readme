@@ -1,0 +1,9 @@
+How to run
+${CODE_DIR}/procsurffast/CompCorSurface/preprocess_NoGlobalReg_CompCor_surf.csh $SUBJECTID $ORIGINALFUNC_DIR $FS_DIR $NEWFUNC_DIR
+
+ORIGINALFUNC_DIR is the path to the preprocessed fmri data using original pipeline (with motion+wm+vent+wb regression)
+FS_DIR is the path to the anatomical Freesurfer preprocessed data
+NEWFUNC_DIR is the path to where the compcor preprocessed data will be written
+
+Example
+${CODE_DIR}/procsurffast/CompCorSurface/preprocess_NoGlobalReg_CompCor_surf.csh ALFIE01 /Data/Experiments/ALFIE/Preprocess/ALFIE_RW_Resting_fcMRI /Data/Experiments/ALFIE/Preprocess/ALFIE_FS /Data/Experiments/ALFIE/Preprocess/ALFIE_RW_Resting_fcMRI_compcornogsr

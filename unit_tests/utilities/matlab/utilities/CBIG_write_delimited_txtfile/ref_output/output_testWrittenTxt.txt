@@ -1,0 +1,5 @@
+SITE_ID,SUB_ID,AGE_AT_SCAN
+siteA,aaaaa,20.75
+siteB,ccccc,21.4346
+siteC,ddddd,13.25
+siteD,eeeee,

@@ -1,0 +1,6 @@
+How to run:
+set datadir = /Data/Experiments/ALFIE/Preprocess/ALFIE_RW_Resting_fcMRI/
+set subid = ALFIE01
+set cmd = ( matlab -nodesktop -nosplash -r '"' 'addpath(genpath('"'"${CODE_DIR}'/procsurffast/MotionScrubbing'"'"'))'; MotionScrubbing_perSub $datadir $subid '"' )
+eval $cmd
+

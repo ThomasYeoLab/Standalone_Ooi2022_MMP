@@ -1,0 +1,6 @@
+SITE_ID,SUB_ID,DX_GROUP,AGE_AT_SCAN,SEX
+siteA,aaaaa,1,20.75,1
+siteA,bbbbb,1,15.66,0
+siteB,ccccc,0,21.4346,1
+siteC,ddddd,NaN,13.25,1
+siteD,eeeee,1,,1

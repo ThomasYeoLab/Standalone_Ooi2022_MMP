@@ -1,0 +1,197 @@
+#!/bin/csh -f
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/mpr2atl_4dfp,v 1.16 2006/02/10 06:44:21 avi Exp avi $
+#$Log: mpr2atl_4dfp,v $
+# Revision 1.16  2006/02/10  06:44:21  avi
+# chmod to write enable after copy [TCS]_t4 from $bindir
+#
+# Revision 1.15  2005/08/12  20:12:41  avi
+# add 711-2V
+#
+# Revision 1.14  2005/06/18  01:21:56  avi
+# report abort due to error (ERR:)
+#
+set idstr = '$Id: mpr2atl_4dfp,v 1.16 2006/02/10 06:44:21 avi Exp avi $'
+set program = $0; set program = $program:t
+
+if (${#argv} < 1) then
+	echo "Usage:	"$program" <mpr_anat> [711-2<C|O|Y|K|L|G|H|V>] [crossmodal] [useold]"
+	echo "e.g.,	"$program" vc1234_654-3[.4dfp.img]"
+	echo "N.B.:	Any argument may include a path, e.g., /data/petmr1/data7/stem9/scout/654-3"
+	echo "N.B.:	<mpr_anat> must be in either ANALYZE or 4dfp format; ANALYZE will be converted to 4dfp"
+	exit
+endif
+
+set modes	= (0 0 0 0 0)
+@ modes[1]	= 1024 + 256 + 3
+@ modes[2]	= 1024 + 256 + 3
+@ modes[3]	= 3072 + 256 + 7
+@ modes[4]	= 2048 + 256 + 7
+@ modes[5]	= 2048 + 256 + 7
+
+@ debug = 0
+@ useold = 0
+@ crossmodal = 0
+set target = "A"
+foreach x (${argv[2-]})
+	if ($x == "setecho")	set echo
+	if ($x == "crossmodal")	@ crossmodal++
+	if ($x == "debug")	@ debug++
+	if ($x == "useold")	@ useold++		# use existing t4file
+	if ($x == "711-2C")	set target = "C"	# np292 combined old+young
+	if ($x == "711-2O")	set target = "O"	# np292 old
+	if ($x == "711-2Y")	set target = "Y"	# np292 young
+	if ($x == "711-2K")	set target = "K"	# 12 selected 789yo children
+	if ($x == "711-2L")	set target = "L"	# 12 selected 789yo children + 12 selected np364 young adults
+	if ($x == "711-2G")	set target = "G"	# gleek 6YF+6YM+6OF+6OM
+	if ($x == "711-2H")	set target = "H"	# Hershey 12F+12M 7yo-18yo Sonata MPRAGE
+	if ($x == "711-2V")	set target = "V"	# young adult Allegra MPRAGE
+end
+
+set wrkdir =	$cwd
+if (! $?RELEASE) then
+	set bindir = /data/petsun4/data1/solaris
+else
+	set bindir = $RELEASE
+endif
+if (! $?REFDIR)	then
+	set refdir = /data/petsun9/data2/petmri
+else
+	set refdir = $REFDIR
+endif
+set oristr =	(T C S)
+set date0 =	`date`
+set usr =	`whoami`
+
+switch ($target)
+case O:
+	set ref =	$refdir/atrophy_avg_222
+	set refmsk =	$refdir/young6+6_avg_222_mask0_g9z
+	breaksw
+case Y:
+	set ref =	$refdir/young6+6_avg_222
+	set refmsk =	$refdir/young6+6_avg_222_mask0_g9z
+	breaksw
+case C:
+	set ref =	$refdir/young6+6_atrophy_avg_222
+	set refmsk =	$refdir/young6+6_avg_222_mask0_g9z
+	breaksw
+case K:
+	set ref =	$refdir/711-2K_222
+	set refmsk =	$refdir/711-2B_mask_g5z
+	breaksw
+case L:
+	set ref =	$refdir/711-2L_222
+	set refmsk =	$refdir/711-2B_mask_g5z
+	breaksw
+case G:
+	set ref =	$refdir/711-2G_111
+	set refmsk =	$refdir/711-2B_mask_g5_111z
+	breaksw
+case H:
+	set ref =	/data/petsun43/data1/atlas/711-2H_111
+	set refmsk =	$refdir/711-2B_mask_g5_111z
+	breaksw
+case V:
+	set ref =	/data/petsun43/data1/atlas/711-2V_111
+	set refmsk =	$refdir/711-2B_mask_g5_111z
+	breaksw
+default:
+	set ref =	$refdir/711-2A_b9
+	set refmsk =	$refdir/711-2A_mask_g5z
+	breaksw
+endsw
+
+set mpr = $1:t
+if ($mpr:e == "img")	set mpr = $mpr:r
+if ($mpr:e == "4dfp")	set mpr = $mpr:r
+if (-d $1:h) then
+	set mprdir = `pushd $1:h | awk '{print $1}'`
+else
+	set mprdir = $wrkdir
+endif
+echo "mprdir="$mprdir"	mpr="$mpr
+
+     if (-e $mpr.4dfp.img && -e $mpr.4dfp.ifh) then
+else if (-e $mpr.img && -e $mpr.hdr) then
+	analyzeto4dfp $mpr
+else if (-e $mpr.4dint.img && -e $mpr.4dint.hdr) then
+	analyzeto4dfp $mpr.4dint
+else if (-e $mprdir/$mpr.4dfp.img && -e $mprdir/$mpr.4dfp.ifh) then
+	foreach e (img img.rec ifh)
+		ln -s $mprdir/$mpr.4dfp.$e .
+	end
+else if (-e $mprdir/$mpr.img && -e $mprdir/$mpr.hdr) then
+	/bin/cp $mprdir/$mpr.{img,img.rec,hdr} .
+	analyzeto4dfp $mpr
+	/bin/rm $mpr.{img,img.rec,hdr}
+else if (-e $mprdir/$mpr.4dint.img && -e $mprdir/$mpr.4dint.hdr) then
+	/bin/cp $mprdir/$mpr.4dint.{img,img.rec,hdr} .
+	analyzeto4dfp $mpr.4dint
+	/bin/rm $mpr.4dint.{img,img.rec,hdr}
+else	echo $mprdir/$mpr not found
+	exit -1
+endif
+@ ori = `awk '/orientation/{print $NF - 1}' $mpr.4dfp.ifh`
+
+set log = $wrkdir/$mpr"_to_711-2"$target.log
+touch				$log
+date >>				$log
+echo $0 $argv[1-] >>		$log
+echo $idstr >>			$log
+echo mprdir = $mprdir >>	$log
+
+set t4file = $mpr"_to_711-2"$target"_t4"
+if ($useold && -e $mprdir/$t4file) then
+	/bin/cp $mprdir/$t4file .
+endif
+
+if ($crossmodal) then
+	@ k = 1
+	while ($k <= ${#modes})
+		@ modes[$k] -= 256
+	@ k++
+	end
+endif
+
+if (! $useold || ! -e $t4file) then
+	if (! -e $mpr"_g11".4dfp.img && ! -e $mpr"_g11".4dfp.img.rec) then
+	echo	gauss_4dfp $mpr 1.1
+		gauss_4dfp $mpr 1.1
+		if ($status) goto ERR;
+	endif
+	foreach e (img img.rec ifh)
+		/bin/cp $mpr.4dfp.$e $mpr"_msk".4dfp.$e
+	end
+	zero_lt_4dfp 1 $mpr"_msk"
+	if ($status) goto ERR;
+echo	/bin/cp $bindir/$oristr[$ori]_t4 $t4file
+	/bin/cp $bindir/$oristr[$ori]_t4 $t4file
+	chmod 664			 $t4file
+
+	set usemsk = ("none" "none" $refmsk $refmsk $refmsk)
+	@ k = 1
+	while ($k <= ${#modes})
+		if ($debug) then
+			imgreg_4dfp $ref $usemsk[$k] $mpr"_g11" $mpr"_mskz" $t4file $modes[$k]
+			if ($status) goto ERR;
+		else
+			imgreg_4dfp $ref $usemsk[$k] $mpr"_g11" $mpr"_mskz" $t4file $modes[$k] >> $log
+			if ($status) goto ERR;
+		endif
+		@ k++
+	end
+	if (! $debug) /bin/rm $mpr"_msk"*
+	if ($target == "A") t4_mul $t4file $refdir/to_711-2B_t4 $mpr"_to_711-2B_t4"
+endif
+
+echo "start time "$date0
+echo "end   time "`date`
+exit
+
+ERR:
+if ($debug) then
+	echo $program": execution aborted due to procedural/write error"
+else
+	echo $program": execution aborted due to procedural/write error" >> $log
+endif
+exit -1

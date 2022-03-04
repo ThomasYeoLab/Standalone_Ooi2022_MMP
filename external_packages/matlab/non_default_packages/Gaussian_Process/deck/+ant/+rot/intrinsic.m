@@ -1,0 +1,6 @@
+function R = intrinsic( alpha, beta, gamma )
+
+    R = ant.rot.around_z(alpha) ...
+        * ant.rot.around_y(beta) ...
+        * ant.rot.around_z(gamma);
+end
