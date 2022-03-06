@@ -72,7 +72,7 @@ for i = 1:length(models)
             % get p value
             for k = 1:N_behav
                 diff_vec = (m1_acc_vecs(k,:) - m2_acc_vecs(k,:))';
-                p(j,k) = CBIG_corrected_resampled_ttest(diff_vec, 0.1, 0); 
+                p(j,k) = CBIG_corrected_resampled_ttest(diff_vec, 1/9, 0); 
             end
         else
             p(j,:) = NaN(1,N_behav);
@@ -112,7 +112,7 @@ for n = 1:length(all_metrics)
                 % get p value
                 for k = 1:N_behav
                     diff_vec = (m1_acc_vecs(k,:) - m2_acc_vecs(k,:))';
-                    p(j,k) = CBIG_corrected_resampled_ttest(diff_vec, 0.1, 0); 
+                    p(j,k) = CBIG_corrected_resampled_ttest(diff_vec, 1/9, 0); 
                 end
             else
                 p(j,:) = NaN(1,N_behav);

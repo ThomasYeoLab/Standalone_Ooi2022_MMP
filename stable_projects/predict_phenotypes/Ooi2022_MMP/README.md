@@ -1,4 +1,4 @@
-# Comparing individualized behaviour predictions across modalities in MRI (MMP)
+# Comparison of individualized behavioral predictions across anatomical, diffusion and functional connectivity MRI (MMP)
 # REFERENCE
 * Ooi, L.Q.R., Chen, J., Zhang, S., Tam, A., Li, J., Dhamala, E., Zhou, J.H., Holmes, A.J., Yeo, B.T., 2022. Comparison of individualized behavioral predictions across anatomical, diffusion and functional connectivity MRI. BioRxiv. [doi:to_be_updated](link)
 
