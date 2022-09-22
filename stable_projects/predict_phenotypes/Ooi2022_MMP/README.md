@@ -1,6 +1,6 @@
 # Comparison of individualized behavioral predictions across anatomical, diffusion and functional connectivity MRI (MMP)
 # REFERENCE
-* Ooi, L.Q.R., Chen, J., Zhang, S., Tam, A., Li, J., Dhamala, E., Zhou, J.H., Holmes, A.J., Yeo, B.T., 2022. Comparison of individualized behavioral predictions across anatomical, diffusion and functional connectivity MRI. BioRxiv. [doi:to_be_updated](link)
+* Ooi, L.Q.R., Chen, J., Zhang, S., Tam, A., Li, J., Dhamala, E., Zhou, J.H., Holmes, A.J., Yeo, B.T. [Comparison of individualized behavioral predictions across anatomical, diffusion and functional connectivity MRI](https://doi.org/10.1016/j.neuroimage.2022.119636). Neuroimage, 2022. 
 
 # BACKGROUND
 We extracted features derived from anatomical T1, diffusion and functional imaging, and compared their ability in predicting behaviour at an individual level using the HCP and ABCD using 3 regression models. We found that functional MRI gave the best prediction results, regardless of type of regression or behaviour. The combination of these modalities through stacking improved predictions of cognition, but not other aspects of behaviour. Additionally, combining features of functional MRI performs as well as combining all features from all modalities. 
@@ -12,12 +12,15 @@ Since the whole Github repository is too big, we provide a stand-alone version o
 ## Download whole repository
 Except for this project, if you want to use the code for other stable projects from out lab as well, you need to download the whole repository.
 
-To download the version of the code that was last tested, you can either
+To download the version of the code that was last tested, you can either visit this link: 
 
-visit this link: <to_be_updated>
+[https://github.com/ThomasYeoLab/CBIG/releases/tag/v0.24.0-CBIG2022_DiffProc-Ooi2022_MMP](https://github.com/ThomasYeoLab/CBIG/releases/tag/v0.24.0-CBIG2022_DiffProc-Ooi2022_MMP)
 
 run the following command, if you have Git installed
-git checkout -b <to_be_updated>
+
+```
+git checkout -b CBIG2022_DiffProc v0.24.0-CBIG2022_DiffProc-Ooi2022_MMP
+```
 
 # USAGE
 ## Setup
@@ -39,7 +42,7 @@ git checkout -b <to_be_updated>
 
 
 # UPDATES
-Release v0.x.x (X/X/2022): Initial release of Ooi2022_MMP project
+Release v0.24.0 (22/9/2022): Initial release of Ooi2022_MMP project
 
 # BUGS and QUESTIONS
 Please contact Leon Ooi at leonooiqr@gmail.com and Thomas Yeo at yeoyeo02@gmail.com.
