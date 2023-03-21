@@ -1,0 +1,2 @@
+#!/bin/bash 
+cd /home/leon_ooi/storage/CBIG_private/stable_projects/brain_parcellation/Schaefer2018_LocalGlobal/Code; matlab -nosplash -nodisplay -nodesktop -r "CBIG_gwMRF_build_data_and_perform_clustering /mnt/isilon/CSC1/Yeolab/Users/leon_ooi/CBIG_private/stable_projects/brain_parcellation/Schaefer2018_LocalGlobal/unit_tests/output/example_out/example_input_fullpaths.csv /mnt/isilon/CSC1/Yeolab/Users/leon_ooi/CBIG_private/stable_projects/brain_parcellation/Schaefer2018_LocalGlobal/unit_tests/output/example_out 1 2 50 50 5000 2 1 50000000 15; exit;"

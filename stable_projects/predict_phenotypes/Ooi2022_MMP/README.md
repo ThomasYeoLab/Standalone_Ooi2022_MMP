@@ -14,12 +14,12 @@ Except for this project, if you want to use the code for other stable projects f
 
 To download the version of the code that was last tested, you can either visit this link: 
 
-[https://github.com/ThomasYeoLab/CBIG/releases/tag/v0.24.0-CBIG2022_DiffProc-Ooi2022_MMP](https://github.com/ThomasYeoLab/CBIG/releases/tag/v0.24.0-CBIG2022_DiffProc-Ooi2022_MMP)
+[https://github.com/ThomasYeoLab/CBIG/releases/tag/v0.24.0-Ooi2022_MMP](https://github.com/ThomasYeoLab/CBIG/releases/tag/v0.24.0-Ooi2022_MMP)
 
 run the following command, if you have Git installed
 
 ```
-git checkout -b CBIG2022_DiffProc v0.24.0-CBIG2022_DiffProc-Ooi2022_MMP
+git checkout -b CBIG2022_Ooi2022_MMP v0.24.0-Ooi2022_MMP
 ```
 
 # USAGE
@@ -42,7 +42,7 @@ git checkout -b CBIG2022_DiffProc v0.24.0-CBIG2022_DiffProc-Ooi2022_MMP
 
 
 # UPDATES
-Release v0.24.0 (22/9/2022): Initial release of Ooi2022_MMP project
+Release v0.24.0 (23/9/2022): Initial release of Ooi2022_MMP project
 
 # BUGS and QUESTIONS
 Please contact Leon Ooi at leonooiqr@gmail.com and Thomas Yeo at yeoyeo02@gmail.com.

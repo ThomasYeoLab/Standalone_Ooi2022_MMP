@@ -12,4 +12,4 @@ rm -r Standalone_Ooi2022_MMP/stable_projects/meta-analysis
 rm -r Standalone_Ooi2022_MMP/stable_projects/preprocessing
 rm -r Standalone_Ooi2022_MMP/stable_projects/predict_phenotypes/He2019_KRDNN
 rm -r Standalone_Ooi2022_MMP/stable_projects/predict_phenotypes/Nguyen2020_RNNAD
-rm -r Standalone_Ooi2022_MMP/stable_projects/predict_phenotypes/ChenTam2021_TRBPC
+rm -r Standalone_Ooi2022_MMP/stable_projects/predict_phenotypes/ChenTam2022_TRBPC
