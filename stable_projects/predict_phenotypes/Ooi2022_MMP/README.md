@@ -43,6 +43,7 @@ git checkout -b CBIG2022_Ooi2022_MMP v0.24.0-Ooi2022_MMP
 
 # UPDATES
 Release v0.24.0 (23/9/2022): Initial release of Ooi2022_MMP project
+Release v0.29.6 (16/1/2024): Addition of code for feature importance plotting
 
 # BUGS and QUESTIONS
 Please contact Leon Ooi at leonooiqr@gmail.com and Thomas Yeo at yeoyeo02@gmail.com.
